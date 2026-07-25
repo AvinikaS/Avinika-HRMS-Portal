@@ -78,8 +78,7 @@ const connectDB = async () => {
 
     if (!cached.promise) {
         const opts = {
-            bufferCommands: false,
-            serverSelectionTimeoutMS: 15000 // Give Atlas plenty of time for cold starts
+            serverSelectionTimeoutMS: 5000
         };
         cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
             console.log('MongoDB connected successfully');
@@ -100,6 +99,17 @@ const connectDB = async () => {
     }
 };
 
+// ALWAYS ensure DB connects on incoming requests (safe for both Vercel and Local since it's cached)
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
+
+const IS_VERCEL = process.env.VERCEL === '1';
 if (!IS_VERCEL) {
     // Local development: connect and start HTTP server
     const PORT = process.env.PORT || 5000;
@@ -110,12 +120,6 @@ if (!IS_VERCEL) {
         });
     }).catch(err => {
         process.exit(1);
-    });
-} else {
-    // Vercel serverless: connect on first request via middleware
-    app.use(async (req, res, next) => {
-        await connectDB();
-        next();
     });
 }
 
