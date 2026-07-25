@@ -109,7 +109,7 @@ app.use(async (req, res, next) => {
     }
 });
 
-const IS_VERCEL = process.env.VERCEL === '1';
+
 if (!IS_VERCEL) {
     // Local development: connect and start HTTP server
     const PORT = process.env.PORT || 5000;
