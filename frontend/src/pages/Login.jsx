@@ -85,11 +85,9 @@ export default function Login() {
                     </Link>
                 </div>
 
-                <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: '#94a3b8' }}>
-                    Default: admin@hrms.com / admin123
-                </p>
             </div>
         </div>
+        </div >
     );
 }
 
