@@ -68,20 +68,35 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Connect to MongoDB (cached connection for serverless cold starts)
+let cached = global.mongoose;
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-    // 1 = connected, 2 = connecting
-    if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
-        return;
-    }
-    try {
-        await mongoose.connect(process.env.MONGO_URI, {
-            serverSelectionTimeoutMS: 5000,
+    if (cached.conn) return cached.conn;
+
+    if (!cached.promise) {
+        const opts = {
+            bufferCommands: false,
+            serverSelectionTimeoutMS: 15000 // Give Atlas plenty of time for cold starts
+        };
+        cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
+            console.log('MongoDB connected successfully');
+            return mongoose;
+        }).catch(err => {
+            cached.promise = null;
+            console.error('MongoDB connection error:', err.message);
+            throw err;
         });
-        console.log('MongoDB connected successfully');
-    } catch (err) {
-        console.error('MongoDB connection error:', err.message);
-        throw err;
+    }
+
+    try {
+        cached.conn = await cached.promise;
+        return cached.conn;
+    } catch (e) {
+        cached.promise = null;
+        throw e;
     }
 };
 
