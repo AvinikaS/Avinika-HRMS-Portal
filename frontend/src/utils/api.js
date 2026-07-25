@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const defaultApiUrl = isProduction
+    ? 'https://avinika-hrms-portal-gn20eczul-arpit-patidars-projects-c20ec1b2.vercel.app/api'
+    : '/api';
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api',
+    baseURL: import.meta.env.VITE_API_URL || defaultApiUrl,
     headers: { 'Content-Type': 'application/json' }
 });
 

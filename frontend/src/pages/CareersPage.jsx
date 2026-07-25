@@ -5,7 +5,11 @@ import PublicNavbar from '../components/Layout/PublicNavbar';
 import PublicFooter from '../components/Layout/PublicFooter';
 import './LandingPage.css';
 
-const API = `${import.meta.env.VITE_API_URL || '/api'}/careers`;
+const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const defaultApiUrl = isProduction
+    ? 'https://avinika-hrms-portal-gn20eczul-arpit-patidars-projects-c20ec1b2.vercel.app/api'
+    : '/api';
+const API = `${import.meta.env.VITE_API_URL || defaultApiUrl}/careers`;
 
 const EMPLOYMENT_ICONS = { 'Full-Time': '💼', 'Part-Time': '⏰', 'Contract': '📋', 'Intern': '🎓' };
 const EMPLOYMENT_COLORS = { 'Full-Time': '#6366f1', 'Part-Time': '#f59e0b', 'Contract': '#06b6d4', 'Intern': '#10b981' };
