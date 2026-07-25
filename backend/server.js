@@ -1,0 +1,105 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const morgan = require('morgan');
+const path = require('path');
+require('dotenv').config();
+const { initCronJobs } = require('./utils/cronJobs');
+
+const app = express();
+
+// Socket.IO only works in non-serverless (local dev) environments
+const IS_VERCEL = process.env.VERCEL === '1';
+let server;
+if (!IS_VERCEL) {
+    const http = require('http');
+    server = http.createServer(app);
+    const { initSocket } = require('./config/socket');
+    initSocket(server);
+}
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(morgan('dev'));
+// Keep static serving for old files uploaded before Cloudinary migration
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/employees', require('./routes/employees'));
+app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/leaves', require('./routes/leaves'));
+app.use('/api/payroll', require('./routes/payroll'));
+app.use('/api/recruitment', require('./routes/recruitment'));
+app.use('/api/documents', require('./routes/documents'));
+app.use('/api/performance', require('./routes/performance'));
+app.use('/api/shifts', require('./routes/shifts'));
+app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/careers', require('./routes/careers'));
+app.use('/api/departments', require('./routes/departments'));
+app.use('/api/payroll-years', require('./routes/payrollYears'));
+app.use('/api/performance-years', require('./routes/performanceYears'));
+app.use('/api/document-types', require('./routes/documentTypes'));
+app.use('/api/holidays', require('./routes/holiday'));
+app.use('/api/settings', require('./routes/settings'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/bonus', require('./routes/bonus'));
+app.use('/api/incentives', require('./routes/incentives'));
+app.use('/api/loans', require('./routes/loan'));
+app.use('/api/advances', require('./routes/advance'));
+app.use('/api/tax', require('./routes/tax'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/exit', require('./routes/exit'));
+app.use('/api/upload', require('./routes/upload'));
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(err.statusCode || 500).json({
+        success: false,
+        message: err.message || 'Internal Server Error'
+    });
+});
+
+// Connect to MongoDB (cached connection for serverless cold starts)
+let isConnected = false;
+const connectDB = async () => {
+    if (isConnected) return;
+    try {
+        await mongoose.connect(process.env.MONGO_URI);
+        isConnected = true;
+        console.log('MongoDB connected successfully');
+    } catch (err) {
+        console.error('MongoDB connection error:', err.message);
+        throw err;
+    }
+};
+
+if (!IS_VERCEL) {
+    // Local development: connect and start HTTP server
+    const PORT = process.env.PORT || 5000;
+    connectDB().then(() => {
+        initCronJobs();
+        server.listen(PORT, () => {
+            console.log(`HRMS Server running on port ${PORT}`);
+        });
+    }).catch(err => {
+        process.exit(1);
+    });
+} else {
+    // Vercel serverless: connect on first request via middleware
+    app.use(async (req, res, next) => {
+        await connectDB();
+        next();
+    });
+}
+
+// Export for Vercel serverless
+module.exports = app;

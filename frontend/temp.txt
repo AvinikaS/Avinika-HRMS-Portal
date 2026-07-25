@@ -1,0 +1,177 @@
+252: <div className="form-group" style={{ flex: '1 1 200px', maxWidth: activeTab === 'form16' ? '400px' : 'none' }}>
+253: <label className="form-label">Financial Year</label>
+254: <div style={{ position: 'relative' }}>
+255: <select
+256: className="form-control"
+257: style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', cursor: 'pointer', paddingRight: '36px', height: '42px' }}
+258: value={financialYear}
+259: onChange={(e) => setFinancialYear(e.target.value)}
+260: >
+261: {(() => {
+262: const maxFy = currentFyStart + 2;
+263: let minFy = currentFyStart;
+264: 
+265: if (isAdmin) {
+266: // Admin can see up to 3 years back max from current, OR going all the way back to employee's join year if older
+267: minFy = employeeJoinFy !== null ? Math.min(employeeJoinFy, currentFyStart - 3) : currentFyStart - 3;
+268: } else {
+269: // Employees specifically only see choices strictly from their joining FY
+270: minFy = employeeJoinFy !== null ? employeeJoinFy : currentFyStart;
+271: }
+272: 
+273: const years = [];
+274: for (let i = maxFy; i >= minFy; i--) {
+275: years.push(i);
+276: }
+277: if (years.length === 0) years.push(currentFyStart);
+278: 
+279: return years.map(y => {
+280: const val = `${y}-${(y + 1).toString().slice(2)}`;
+281: return <option key={val} value={val}>{y}-{y + 1}</option>;
+282: });
+283: })()}
+284: </select>
+285: <HiChevronDown style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} size={18} />
+286: </div>
+287: </div>
+288: </div>
+289: </div>
+290: 
+291: {activeTab === 'form16' ? (
+292: <Form16Module fy={financialYear} />
+293: ) : (() => {
+294: // Conditional checks for futuristic unreleased years or years before joining
+295: if (selectedFyStartYear > currentFyStart) {
+296: return (
+297: <div className="card" style={{ textAlign: 'center', padding: '60px 20px', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
+298: <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+299: <HiOutlineExclamationCircle size={48} style={{ color: '#3b82f6', opacity: 0.8 }} />
+300: </div>
+301: <h3 style={{ marginBottom: 8, color: '#1e293b' }}>Coming Soon</h3>
+302: <p style={{ color: '#64748b', maxWidth: 400, margin: '0 auto' }}>
+303: Tax declarations and estimations for the {financialYear} financial period are not yet open or active. Please check back when this term begins.
+304: </p>
+305: </div>
+306: );
+307: }
+308: 
+309: if (employeeJoinFy !== null && selectedFyStartYear < employeeJoinFy) {
+310: return (
+311: <div className="card" style={{ textAlign: 'center', padding: '60px 20px', background: '#fef2f2', border: '1px dashed #fca5a5' }}>
+312: <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+313: <HiOutlineDocumentText size={48} style={{ color: '#ef4444', opacity: 0.6 }} />
+314: </div>
+315: <h3 style={{ marginBottom: 8, color: '#7f1d1d' }}>No Prior Records Available</h3>
+316: <p style={{ color: '#991b1b', maxWidth: 400, margin: '0 auto' }}>
+317: This system holds no tax data for {financialYear} because the employee wasn't employed during this period.<br /><br />
+318: <strong style={{ background: '#fee2e2', padding: '4px 8px', borderRadius: 4 }}>Official Date of Joining is: {formattedDoj}</strong>
+319: </p>
+320: </div>
+321: );
+322: }
+323: 
+324: return (
+325: <>
+326: {loading ? <div style={{ padding: 20 }}>Loading...</div> : profile ? (
+327: <div className="form-row" style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+328: {/* Declarations Form */}
+329: <div className="card" style={{ flex: '1 1 350px' }}>
+330: <h3>Investment Declarations</h3>
+331: <hr style={{ margin: '15px 0', borderColor: '#e2e8f0' }} />
+332: <div style={{ border: 'none' }}>
+333: <div style={{ padding: '12px 16px', background: '#fff9db', border: '1px solid #fab005', borderRadius: 8, marginBottom: 20, color: '#856404', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+334: <HiOutlineExclamationCircle size={18} />
+335: <span>These values are fetched from the <strong>Employee Profile</strong>. To change them, please edit the employee's record directly.</span>
+336: </div>
+337: <div className="form-group" style={{ marginBottom: 20 }}>
+338: <label className="form-label">Tax Regime Selection</label>
+339: <div style={{ display: 'flex', gap: 20, marginTop: 10 }}>
+340: <label><input type="radio" disabled checked={formData.taxRegime === 'Old'} /> Old Tax Regime</label>
+341: <label><input type="radio" disabled checked={formData.taxRegime === 'New'} /> New Tax Regime</label>
+342: </div>
+343: </div>
+344: 
+345: <div className="form-row">
+346: <div className="form-group">
+347: <label className="form-label">Section 80C (LIC, PPF, ELSS)</label>
+348: <input type="number" className="form-control" readOnly value={formData.investments80C} />
+349: </div>
+350: <div className="form-group">
+351: <label className="form-label">Section 80D (Medical Insurance)</label>
+352: <input type="number" className="form-control" readOnly value={formData.medical80D} />
+353: </div>
+354: </div>
+355: <div className="form-row">
+356: <div className="form-group">
+357: <label className="form-label">HRA Exemption / Rent Paid</label>
+358: <input type="number" className="form-control" readOnly value={formData.hraExemption} />
+359: </div>
+360: <div className="form-group">
+361: <label className="form-label">Home Loan Interest (Section 24)</label>
+362: <input type="number" className="form-control" readOnly value={formData.housingLoanInterest} />
+363: </div>
+364: </div>
+365: <div className="form-row">
+366: <div className="form-group">
+367: <label className="form-label">Section 80CCD (NPS)</label>
+368: <input type="number" className="form-control" readOnly value={formData.nps80CCD} />
+369: </div>
+370: <div className="form-group">
+371: <label className="form-label">Any Other Income</label>
+372: <input type="number" className="form-control" readOnly value={formData.otherIncome} />
+373: </div>
+374: </div>
+375: <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+376: <button type="button" className="btn btn-primary" onClick={fetchProfile}>Refresh from HR Records</button>
+377: </div>
+378: </div>
+379: </div>
+380: 
+381: {/* Tax Summary Widget */}
+382: <div className="card" style={{ flex: '1 1 300px', background: '#f8fafc' }}>
+383: <h3>Calculated Tax Summary</h3>
+384: <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>Based on FY {financialYear}</p>
+385: 
+386: <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+387: <span style={{ color: '#475569' }}>Annual Gross Salary:</span>
+388: <strong style={{ fontSize: 15 }}>{fmt(profile.annualGrossIncome)}</strong>
+389: </div>
+390: <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+391: <span style={{ color: '#475569' }}>Other Declared Income:</span>
+392: <strong style={{ fontSize: 15 }}>+ {fmt(profile.otherIncome)}</strong>
+393: </div>
+394: <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #cbd5e1' }}>
+395: <span style={{ color: '#475569' }}>Total Exemptions (incl. Standard):</span>
+396: <strong style={{ color: '#ef4444' }}>- {fmt(profile.totalExemptions)}</strong>
+397: </div>
+398: <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+399: <span style={{ fontWeight: 600 }}>Net Taxable Income:</span>
+400: <strong style={{ fontSize: 16 }}>{fmt(profile.taxableIncome)}</strong>
+401: </div>
+402: 
+403: <div style={{ background: '#334155', color: 'white', padding: 20, borderRadius: 8 }}>
+404: <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+405: <span style={{ opacity: 0.9 }}>Estimated Annual Tax:</span>
+406: <strong style={{ fontSize: 16 }}>{fmt(profile.estimatedAnnualTax)}</strong>
+407: </div>
+408: <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+409: <span style={{ opacity: 0.9 }}>Applicable Monthly TDS:</span>
+410: <strong style={{ fontSize: 20, color: '#38bdf8' }}>{fmt(profile.monthlyTDS)}</strong>
+411: </div>
+412: </div>
+413: 
+414: <div style={{ marginTop: 24, padding: 12, background: '#e0f2fe', borderRadius: 8, fontSize: 13, color: '#0369a1' }}>
+415: <HiOutlineDocumentText style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+416: The monthly TDS displayed here will be automatically deducted from your upcoming generated payrolls.
+417: </div>
+418: </div>
+419: </div>
+420: </div>
+421: ) : null}
+422: </>
+423: );
+424: })()}
+425: </div>
+426: );
+427: }
+428: 

@@ -1,0 +1,52 @@
+const PerformanceYear = require('../models/PerformanceYear');
+
+exports.getYears = async (req, res) => {
+    try {
+        const years = await PerformanceYear.find().sort({ year: -1 });
+        res.json({ success: true, count: years.length, data: years });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.createYear = async (req, res) => {
+    try {
+        const year = await PerformanceYear.create(req.body);
+        res.status(201).json({ success: true, data: year });
+    } catch (err) {
+        if (err.code === 11000) {
+            return res.status(400).json({ success: false, message: 'Year already exists' });
+        }
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+exports.updateYear = async (req, res) => {
+    try {
+        const year = await PerformanceYear.findByIdAndUpdate(req.params.id, req.body, {
+            new: true,
+            runValidators: true
+        });
+        if (!year) {
+            return res.status(404).json({ success: false, message: 'Year not found' });
+        }
+        res.json({ success: true, data: year });
+    } catch (err) {
+        if (err.code === 11000) {
+            return res.status(400).json({ success: false, message: 'Year already exists' });
+        }
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+exports.deleteYear = async (req, res) => {
+    try {
+        const year = await PerformanceYear.findByIdAndDelete(req.params.id);
+        if (!year) {
+            return res.status(404).json({ success: false, message: 'Year not found' });
+        }
+        res.json({ success: true, message: 'Year deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
