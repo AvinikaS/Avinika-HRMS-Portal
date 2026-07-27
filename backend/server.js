@@ -26,6 +26,48 @@ app.use(morgan('dev'));
 // Keep static serving for old files uploaded before Cloudinary migration
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// MongoDB connection (cached for serverless cold starts)
+let cached = global.mongoose;
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
+const connectDB = async () => {
+    if (cached.conn) return cached.conn;
+
+    if (!cached.promise) {
+        const opts = {
+            serverSelectionTimeoutMS: 5000
+        };
+        cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
+            console.log('MongoDB connected successfully');
+            return mongoose;
+        }).catch(err => {
+            cached.promise = null;
+            console.error('MongoDB connection error:', err.message);
+            throw err;
+        });
+    }
+
+    try {
+        cached.conn = await cached.promise;
+        return cached.conn;
+    } catch (e) {
+        cached.promise = null;
+        throw e;
+    }
+};
+
+// Ensure DB connects BEFORE any route handler runs
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employees', require('./routes/employees'));
@@ -68,46 +110,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-let cached = global.mongoose;
-if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
-}
 
-const connectDB = async () => {
-    if (cached.conn) return cached.conn;
-
-    if (!cached.promise) {
-        const opts = {
-            serverSelectionTimeoutMS: 5000
-        };
-        cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
-            console.log('MongoDB connected successfully');
-            return mongoose;
-        }).catch(err => {
-            cached.promise = null;
-            console.error('MongoDB connection error:', err.message);
-            throw err;
-        });
-    }
-
-    try {
-        cached.conn = await cached.promise;
-        return cached.conn;
-    } catch (e) {
-        cached.promise = null;
-        throw e;
-    }
-};
-
-// ALWAYS ensure DB connects on incoming requests (safe for both Vercel and Local since it's cached)
-app.use(async (req, res, next) => {
-    try {
-        await connectDB();
-        next();
-    } catch (err) {
-        next(err);
-    }
-});
 
 
 if (!IS_VERCEL) {
