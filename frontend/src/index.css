@@ -254,6 +254,7 @@ img {
   left: 0;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   width: var(--sidebar-width);
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
@@ -312,6 +313,9 @@ img {
 .sidebar-nav {
   flex: 1;
   padding: 12px 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .nav-section-title {
@@ -1430,6 +1434,12 @@ table tr:last-child td {
   .sidebar.mobile-open {
     transform: translateX(0);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar.mobile-open .sidebar-nav {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
   .sidebar.collapsed {

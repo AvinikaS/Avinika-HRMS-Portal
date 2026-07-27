@@ -24,9 +24,14 @@ api.interceptors.response.use(
     res => res,
     err => {
         if (err.response?.status === 401) {
-            sessionStorage.removeItem('hrms_token');
-            sessionStorage.removeItem('hrms_user');
-            window.location.href = '/login';
+            // Don't redirect if we're already on the login page or if this is a login request
+            const isLoginRequest = err.config?.url?.includes('/auth/login');
+            const isOnLoginPage = window.location.pathname === '/login';
+            if (!isLoginRequest && !isOnLoginPage) {
+                sessionStorage.removeItem('hrms_token');
+                sessionStorage.removeItem('hrms_user');
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(err);
     }

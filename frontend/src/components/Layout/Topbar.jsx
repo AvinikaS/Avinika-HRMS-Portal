@@ -11,6 +11,7 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
     const [notifications, setNotifications] = useState([]);
     const [showNotif, setShowNotif] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const getInitials = () => {
         if (!user) return '?';
@@ -30,10 +31,8 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
     };
 
     useEffect(() => {
-        // Initial fetch on mount
         fetchNotifications();
 
-        // Connect client-side WebSocket
         const token = sessionStorage.getItem('hrms_token');
         const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         const defaultApiUrl = isProduction
@@ -42,7 +41,7 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
 
         const apiUrl = import.meta.env.VITE_API_URL || defaultApiUrl;
         const SOCKET_SERVER_URL = apiUrl
-            ? apiUrl.replace('/api', '') // Production: derive from API URL
+            ? apiUrl.replace('/api', '')
             : (window.location.hostname === 'localhost'
                 ? 'http://localhost:5000'
                 : `${window.location.protocol}//${window.location.hostname}:5000`);
@@ -65,7 +64,6 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
             });
 
             newSocket.on('connect_error', () => {
-                // Serverless (Vercel) doesn't support WebSocket — fall back to polling
                 console.log('WebSocket unavailable, using polling for notifications');
                 newSocket.disconnect();
             });
@@ -73,7 +71,6 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
             console.log('Socket connection failed, using REST polling');
         }
 
-        // Fallback: poll every 30s for new notifications
         const pollInterval = setInterval(fetchNotifications, 30000);
 
         return () => {
@@ -116,41 +113,27 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
         const titleLower = (n.title || '').toLowerCase();
         const isAdminOrHR = ['SuperAdmin', 'HRAdmin'].includes(user?.role);
 
-        // 1. Leaves
         if (titleLower.includes('leave')) {
             return isAdminOrHR ? '/leaves' : '/my-leaves';
         }
-
-        // 2. Resignations
         if (titleLower.includes('resignation')) {
             return isAdminOrHR ? '/exit-management' : '/resignation';
         }
-
-        // 3. Documents
         if (titleLower.includes('document')) {
             return isAdminOrHR ? '/document-approvals' : '/my-documents';
         }
-
-        // 4. Payslips
         if (titleLower.includes('payslip')) {
             return '/my-payslips';
         }
-
-        // 5. Loans
         if (titleLower.includes('loan')) {
             return isAdminOrHR ? '/payroll/loans' : '/my-loans';
         }
-
-        // 6. Advance Salary
         if (titleLower.includes('advance')) {
             return isAdminOrHR ? '/payroll/advances' : '/my-loans';
         }
-
-        // 7. Bonus / Incentives
         if (titleLower.includes('bonus') || titleLower.includes('incentive')) {
             return '/my-profile';
         }
-
         return null;
     };
 
@@ -168,6 +151,11 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
         if (targetLink) {
             navigate(targetLink);
         }
+    };
+
+    const handleConfirmLogout = () => {
+        setShowLogoutModal(false);
+        logout();
     };
 
     return (
@@ -211,23 +199,44 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
                         </div>
                     )}
                 </div>
-                <div className="user-menu" title="Click to logout">
-                    <div className="user-avatar" style={{ border: '2px solid var(--primary)', overflow: 'hidden' }}>
-                        {user?.profileImage ? (
-                            <img src={user.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                            getInitials()
-                        )}
-                    </div>
-                    <div className="user-info" onClick={logout}>
-                        <div className="user-name">
-                            {user?.employeeId ? `${user.employeeId.firstName} ${user.employeeId.lastName}` : user?.email?.split('@')[0]}
+                <div className="user-menu-section">
+                    <div className="user-profile-link" onClick={() => navigate('/my-profile')} title="View Profile">
+                        <div className="user-avatar" style={{ border: '2px solid var(--primary)', overflow: 'hidden' }}>
+                            {user?.profileImage ? (
+                                <img src={user.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                getInitials()
+                            )}
                         </div>
-                        <div className="user-role">{user?.role || 'Employee'}</div>
+                        <div className="user-info">
+                            <div className="user-name">
+                                {user?.employeeId ? `${user.employeeId.firstName} ${user.employeeId.lastName}` : user?.email?.split('@')[0]}
+                            </div>
+                            <div className="user-role">{user?.role || 'Employee'}</div>
+                        </div>
                     </div>
-                    <HiOutlineLogout size={16} onClick={logout} style={{ color: 'var(--text-tertiary)', marginLeft: 8, cursor: 'pointer' }} />
+                    <button className="topbar-logout-btn" onClick={() => setShowLogoutModal(true)} title="Logout">
+                        <HiOutlineLogout size={18} />
+                    </button>
                 </div>
             </div>
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutModal && (
+                <div className="logout-overlay" onClick={() => setShowLogoutModal(false)}>
+                    <div className="logout-modal" onClick={e => e.stopPropagation()}>
+                        <div className="logout-modal-icon">
+                            <HiOutlineLogout size={32} />
+                        </div>
+                        <h3 className="logout-modal-title">Logout</h3>
+                        <p className="logout-modal-desc">Are you sure you want to logout from HRMS Portal?</p>
+                        <div className="logout-modal-actions">
+                            <button className="logout-modal-cancel" onClick={() => setShowLogoutModal(false)}>Cancel</button>
+                            <button className="logout-modal-confirm" onClick={handleConfirmLogout}>Yes, Logout</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .notif-dropdown {
@@ -334,6 +343,134 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
                     justify-content: center;
                     padding: 0 4px;
                     box-sizing: border-box;
+                }
+
+                /* User menu section */
+                .user-menu-section {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .user-profile-link {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 6px 10px;
+                    border-radius: var(--radius-md);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .user-profile-link:hover {
+                    background: var(--bg-hover);
+                }
+                .topbar-logout-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: var(--radius-md);
+                    border: 1px solid var(--border-color);
+                    background: transparent;
+                    color: var(--text-tertiary);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    flex-shrink: 0;
+                }
+                .topbar-logout-btn:hover {
+                    background: #fee2e2;
+                    border-color: #fca5a5;
+                    color: #dc2626;
+                }
+
+                /* Logout Modal */
+                .logout-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(4px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                    animation: fadeIn 0.2s ease-out;
+                }
+                .logout-modal {
+                    background: var(--bg-secondary, #fff);
+                    border-radius: 16px;
+                    padding: 32px;
+                    width: 380px;
+                    max-width: 90vw;
+                    text-align: center;
+                    box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+                    animation: modalSlideIn 0.3s ease-out;
+                }
+                .logout-modal-icon {
+                    width: 64px;
+                    height: 64px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #fee2e2, #fecaca);
+                    color: #dc2626;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 20px;
+                }
+                .logout-modal-title {
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: var(--text-primary, #1e293b);
+                    margin: 0 0 8px;
+                }
+                .logout-modal-desc {
+                    font-size: 14px;
+                    color: var(--text-secondary, #64748b);
+                    margin: 0 0 28px;
+                    line-height: 1.5;
+                }
+                .logout-modal-actions {
+                    display: flex;
+                    gap: 12px;
+                }
+                .logout-modal-cancel {
+                    flex: 1;
+                    padding: 10px 20px;
+                    border-radius: 10px;
+                    border: 1px solid var(--border-color, #e2e8f0);
+                    background: transparent;
+                    color: var(--text-primary, #1e293b);
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .logout-modal-cancel:hover {
+                    background: var(--bg-hover, #f1f5f9);
+                }
+                .logout-modal-confirm {
+                    flex: 1;
+                    padding: 10px 20px;
+                    border-radius: 10px;
+                    border: none;
+                    background: linear-gradient(135deg, #dc2626, #b91c1c);
+                    color: white;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .logout-modal-confirm:hover {
+                    background: linear-gradient(135deg, #b91c1c, #991b1b);
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes modalSlideIn {
+                    from { opacity: 0; transform: scale(0.9) translateY(10px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); }
                 }
             `}</style>
         </header>
