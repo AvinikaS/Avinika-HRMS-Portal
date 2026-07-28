@@ -11,5 +11,19 @@
             "source": "/(.*)",
             "destination": "/server.js"
         }
+    ],
+    "crons": [
+        {
+            "path": "/api/cron/birthdays",
+            "schedule": "30 2 * * *"
+        },
+        {
+            "path": "/api/cron/absent",
+            "schedule": "30 9 * * *"
+        },
+        {
+            "path": "/api/cron/payroll",
+            "schedule": "0 0 1 * *"
+        }
     ]
 }

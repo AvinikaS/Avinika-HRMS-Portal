@@ -95,6 +95,7 @@ app.use('/api/tax', require('./routes/tax'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/exit', require('./routes/exit'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/cron', require('./routes/cron'));
 
 // Health check
 app.get('/api/health', (req, res) => {
