@@ -5,7 +5,8 @@ import {
     HiOutlineViewGrid, HiOutlineUserGroup, HiOutlineClock, HiOutlineCalendar,
     HiOutlineCurrencyDollar, HiOutlineBriefcase, HiOutlineChartBar,
     HiOutlineDocumentText, HiOutlineCog, HiOutlineChevronLeft, HiOutlineChevronRight,
-    HiOutlineClipboardCheck, HiOutlineUser, HiOutlineCash, HiOutlineCreditCard, HiOutlineGift, HiOutlineTrendingUp, HiOutlineChevronDown, HiOutlineChevronUp
+    HiOutlineClipboardCheck, HiOutlineUser, HiOutlineCash, HiOutlineCreditCard, HiOutlineGift, HiOutlineTrendingUp, HiOutlineChevronDown, HiOutlineChevronUp,
+    HiOutlineSupport
 } from 'react-icons/hi';
 
 const adminNavItems = [
@@ -48,6 +49,23 @@ const adminNavItems = [
     },
     { path: '/settings', label: 'Settings', icon: HiOutlineCog },
     { path: '/holidays', label: 'Holidays', icon: HiOutlineCalendar },
+    { section: 'Helpdesk' },
+    {
+        label: 'HR Helpdesk', icon: HiOutlineSupport, children: [
+            { path: '/admin/helpdesk', label: 'Dashboard' },
+            { path: '/admin/helpdesk/tickets', label: 'All Tickets' },
+        ]
+    },
+    { section: 'Expense' },
+    {
+        label: 'Expense Management', icon: HiOutlineCash, children: [
+            { path: '/superadmin/expenses', label: 'Dashboard' },
+            { path: '/superadmin/expenses/pending', label: 'Pending Approval' },
+            { path: '/superadmin/expenses/all', label: 'All Expenses' },
+            { path: '/superadmin/expenses/categories', label: 'Categories' },
+            { path: '/admin/expenses/pending', label: 'Expense Approvals' },
+        ]
+    },
     { section: 'Account' },
     { path: '/my-profile', label: 'My Profile', icon: HiOutlineUser },
 ];
@@ -65,6 +83,9 @@ const employeeNavItems = [
     { path: '/my-performance', label: 'Performance', icon: HiOutlineClipboardCheck },
     { path: '/holiday-calendar', label: 'Holiday Calendar', icon: HiOutlineCalendar },
     { path: '/resignation', label: 'Resignation', icon: HiOutlineChevronRight },
+    { section: 'Support' },
+    { path: '/helpdesk', label: 'HR Helpdesk', icon: HiOutlineSupport },
+    { path: '/expenses', label: 'Expense & Reimbursement', icon: HiOutlineCash },
 ];
 
 export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
@@ -72,7 +93,33 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
     const location = useLocation();
     const [expanded, setExpanded] = useState({});
 
-    const navItems = isAdmin || isManager ? adminNavItems : employeeNavItems;
+    let navItems = isAdmin || isManager ? adminNavItems : employeeNavItems;
+
+    // Filter SuperAdmin specific routes for HRAdmin
+    if (user?.role === 'HRAdmin') {
+        navItems = navItems.map(item => {
+            if (item.label === 'Expense Management' && item.children) {
+                return {
+                    ...item,
+                    children: item.children.filter(child => !child.path.startsWith('/superadmin/'))
+                };
+            }
+            return item;
+        });
+    }
+
+    // Filter HRAdmin specific routes for SuperAdmin
+    if (user?.role === 'SuperAdmin') {
+        navItems = navItems.map(item => {
+            if (item.label === 'Expense Management' && item.children) {
+                return {
+                    ...item,
+                    children: item.children.filter(child => child.path !== '/admin/expenses/pending')
+                };
+            }
+            return item;
+        });
+    }
 
     return (
         <>

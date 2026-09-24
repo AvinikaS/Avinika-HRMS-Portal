@@ -150,7 +150,8 @@ exports.generatePayslipPDF = (payroll, res, companyInfo = {}) => {
         { label: 'Bonus', val: payroll.earnings.bonus },
         { label: 'Incentive', val: payroll.earnings.incentive || 0 },
         { label: 'Loan Disbursal', val: payroll.earnings.loanDisbursal || 0 },
-        { label: 'Advance Salary Disbursal', val: payroll.earnings.advanceDisbursal || 0 }
+        { label: 'Advance Salary Disbursal', val: payroll.earnings.advanceDisbursal || 0 },
+        { label: 'Expense Reimbursement', val: payroll.earnings.expenseReimbursement || 0 }
     ].filter(i => i.val > 0 || i.label === 'Basic Salary' || i.label === 'HRA' || i.label.includes('Allowance'));
 
     const dedItems = [

@@ -94,8 +94,10 @@ app.use('/api/advances', require('./routes/advance'));
 app.use('/api/tax', require('./routes/tax'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/exit', require('./routes/exit'));
+app.use('/api/helpdesk', require('./routes/helpdesk'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/cron', require('./routes/cron'));
+app.use("/api/expenses", require("./routes/expense.routes"));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -117,8 +119,11 @@ app.use((err, req, res, next) => {
 if (!IS_VERCEL) {
     // Local development: connect and start HTTP server
     const PORT = process.env.PORT || 5000;
-    connectDB().then(() => {
+    connectDB().then(async () => {
         initCronJobs();
+        // Seed default expense categories
+        const { seedDefaultCategories } = require('./models/ExpenseCategory.model');
+        await seedDefaultCategories();
         server.listen(PORT, () => {
             console.log(`HRMS Server running on port ${PORT}`);
         });

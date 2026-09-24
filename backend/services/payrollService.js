@@ -5,6 +5,7 @@ const { calculateMonthlyTDS } = require('../utils/taxUtils');
 
 const Loan = require('../models/Loan');
 const AdvanceSalary = require('../models/AdvanceSalary');
+const { ExpenseClaim } = require('../models/ExpenseClaim.model');
 
 exports.rollbackPayrollDeductions = async (month, year, employeeId = null) => {
     // 1. Rollback Loans
@@ -99,9 +100,15 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
             approvalStatus: { $ne: 'rejected' }
         }).sort({ createdAt: -1 });
 
-        if (exitReq && exitReq.lastWorkingDay && new Date(exitReq.lastWorkingDay) >= payrollStart) {
-            employees.push(emp);
-            continue;
+        if (exitReq) {
+            // If exit process is fully completed, DO NOT include in regular monthly payroll (as F&F settlement handles their final payout)
+            if (exitReq.approvalStatus === 'completed' || emp.status === 'Inactive') {
+                continue;
+            }
+            if (exitReq.lastWorkingDay && new Date(exitReq.lastWorkingDay) >= payrollStart) {
+                employees.push(emp);
+                continue;
+            }
         }
     }
 
@@ -362,8 +369,18 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
         const loanDisbursal = disbursedLoans.reduce((sum, l) => sum + l.amount, 0);
         const advanceDisbursal = disbursedAdvances.reduce((sum, a) => sum + a.amount, 0);
 
+        // Fetch Expense Reimbursements
+        const expenseMonthStr = `${year}-${month.toString().padStart(2, '0')}`;
+        const reimbursableExpenses = await ExpenseClaim.find({
+            employeeId: emp._id,
+            'payment.method': 'PAYROLL',
+            'payment.payrollMonth': expenseMonthStr,
+            status: { $in: ['PAYMENT_PENDING', 'PAID'] }
+        });
+        const expenseReimbursement = reimbursableExpenses.reduce((sum, e) => sum + (e.amountApproved || 0), 0);
+
         // 4. Final Totals
-        const totalEarnings = basic + hra + allowances + totalBonus + dynamicIncentive + overtimePay + loanDisbursal + advanceDisbursal;
+        const totalEarnings = basic + hra + allowances + totalBonus + dynamicIncentive + overtimePay + loanDisbursal + advanceDisbursal + expenseReimbursement;
         const totalDeductions = pf + esic + tax + leaveDeduction + loanEmi + advanceRecovery;
         const netSalary = totalEarnings - totalDeductions;
 
@@ -388,7 +405,8 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
                 incentive: dynamicIncentive,
                 overtime: overtimePay,
                 loanDisbursal,
-                advanceDisbursal
+                advanceDisbursal,
+                expenseReimbursement
             },
             deductions: {
                 pf,

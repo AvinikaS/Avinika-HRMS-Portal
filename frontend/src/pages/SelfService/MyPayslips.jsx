@@ -196,6 +196,7 @@ export default function MyPayslips() {
                                                 {p.earnings?.incentive > 0 && <div><div className="payslip-item-lbl">Incentives</div><div className="payslip-item-val">{fmt(p.earnings?.incentive)}</div></div>}
                                                 {p.earnings?.loanDisbursal > 0 && <div><div className="payslip-item-lbl">Loan Disbursal</div><div className="payslip-item-val">{fmt(p.earnings?.loanDisbursal)}</div></div>}
                                                 {p.earnings?.advanceDisbursal > 0 && <div><div className="payslip-item-lbl">Advance Disbursal</div><div className="payslip-item-val">{fmt(p.earnings?.advanceDisbursal)}</div></div>}
+                                                {p.earnings?.expenseReimbursement > 0 && <div><div className="payslip-item-lbl" style={{ color: 'var(--primary)' }}>Expense Reimbursement</div><div className="payslip-item-val">{fmt(p.earnings?.expenseReimbursement)}</div></div>}
                                             </div>
                                             <div className="payslip-sec-total earn">
                                                 <span>Gross Salary</span>

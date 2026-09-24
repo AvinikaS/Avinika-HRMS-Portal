@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const ExitRequest = require('../models/ExitRequest');
 const GratuityCalculation = require('../models/GratuityCalculation');
 const FFSettlement = require('../models/FFSettlement');
@@ -525,26 +526,59 @@ exports.getFFCalculation = async (req, res) => {
             gratuityAmount = Math.round((effectiveBasic * 15 * completedYearsRounded) / 26);
         }
 
-        res.json({
-            success: true,
-            data: {
-                employeeId,
-                exitRequestId: exitRequest._id,
-                basic,
-                gross,
-                pendingSalary,
-                leaveEncashment,
-                gratuityAmount,
-                loanRecovery,
-                advanceRecovery,
-                noticePeriodRecovery,
-                showWageWarning,
-                effectiveBasic,
-                completedYearsRounded,
-                gratuityEligibility: eligibilityStatus,
-                earnedLeaves
-            }
-        });
+        const existingSettlement = await FFSettlement.findOne({ exitRequestId: exitRequest._id });
+
+        if (existingSettlement) {
+            res.json({
+                success: true,
+                data: {
+                    employeeId,
+                    exitRequestId: exitRequest._id,
+                    basic,
+                    gross,
+                    showWageWarning,
+                    effectiveBasic,
+                    completedYearsRounded,
+                    gratuityEligibility: eligibilityStatus,
+                    earnedLeaves,
+                    isLocked: true,
+                    pendingSalary: existingSettlement.pendingSalary,
+                    leaveEncashment: existingSettlement.leaveEncashment,
+                    gratuityAmount: existingSettlement.gratuityAmount,
+                    otherEarnings: existingSettlement.otherEarnings,
+                    loanRecovery: existingSettlement.loanRecovery,
+                    advanceRecovery: existingSettlement.advanceRecovery,
+                    noticePeriodRecovery: existingSettlement.noticePeriodRecovery,
+                    otherDeductions: existingSettlement.otherDeductions,
+                    netFFPayable: existingSettlement.netFFPayable,
+                    paymentMode: existingSettlement.paymentMode,
+                    transactionReference: existingSettlement.transactionReference,
+                    paymentStatus: existingSettlement.paymentStatus
+                }
+            });
+        } else {
+            res.json({
+                success: true,
+                data: {
+                    employeeId,
+                    exitRequestId: exitRequest._id,
+                    basic,
+                    gross,
+                    pendingSalary,
+                    leaveEncashment,
+                    gratuityAmount,
+                    loanRecovery,
+                    advanceRecovery,
+                    noticePeriodRecovery,
+                    showWageWarning,
+                    effectiveBasic,
+                    completedYearsRounded,
+                    gratuityEligibility: eligibilityStatus,
+                    earnedLeaves,
+                    isLocked: false
+                }
+            });
+        }
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -557,6 +591,11 @@ exports.approveFF = async (req, res) => {
 
         const exit = await ExitRequest.findById(exitRequestId);
         if (!exit) return res.status(404).json({ success: false, message: 'Exit request not found' });
+
+        const existingSettlement = await FFSettlement.findOne({ exitRequestId });
+        if (existingSettlement) {
+            return res.status(400).json({ success: false, message: 'F&F settlement is already approved and locked for this exit request.' });
+        }
 
         // Mandate nominee bank details for death cases
         if (exit.exitReason === 'death') {
@@ -686,12 +725,26 @@ exports.generateDocument = async (req, res) => {
         const { exitRequestId } = req.params;
         const { type } = req.query; // ff_letter, experience_letter, relieving_letter
 
-        const exit = await ExitRequest.findById(exitRequestId).populate('employeeId');
+        let exit = null;
+        if (exitRequestId && mongoose.Types.ObjectId.isValid(exitRequestId)) {
+            exit = await ExitRequest.findById(exitRequestId).populate('employeeId');
+            if (!exit) {
+                exit = await ExitRequest.findOne({ employeeId: exitRequestId }).populate('employeeId');
+            }
+        }
+        if (!exit) {
+            // Fallback: find any non-draft exit request
+            exit = await ExitRequest.findOne({ approvalStatus: { $ne: 'draft' } }).sort({ updatedAt: -1 }).populate('employeeId');
+        }
         if (!exit) return res.status(404).send('Exit request not found');
 
         const emp = exit.employeeId;
         const settings = await getSystemSettings();
-        const settlement = await FFSettlement.findOne({ exitRequestId }) || {};
+        let settlement = await FFSettlement.findOne({ exitRequestId: exit._id });
+        if (!settlement) {
+            settlement = await FFSettlement.findOne({ employeeId: emp?._id || emp }).sort({ createdAt: -1 });
+        }
+        settlement = settlement || {};
 
         const doc = new PDFDocument({ margin: 50 });
 
@@ -738,13 +791,16 @@ exports.generateDocument = async (req, res) => {
             doc.fontSize(12).text(`NET PAYABLE AMOUNT: Rs. ${settlement.netFFPayable || 0}`, { bold: true });
             doc.text(`Payment Status: ${(settlement.paymentStatus || 'Pending').toUpperCase()}`);
             if (settlement.paymentMode) {
-                doc.text(`Payment Mode: ${settlement.paymentMode} (Ref: ${settlement.transactionReference})`);
+                doc.text(`Payment Mode: ${settlement.paymentMode}`);
+                if (settlement.transactionReference) {
+                    doc.text(`Transaction ID / Ref: ${settlement.transactionReference}`);
+                }
             }
 
         } else if (type === 'experience_letter') {
             doc.fontSize(14).text('EXPERIENCE CERTIFICATE', { align: 'center', underline: true });
             doc.moveDown(2);
-            doc.fontSize(11).leading(1.6);
+            doc.fontSize(11);
             doc.text(`Date: ${formattedDate}`);
             doc.moveDown(1.5);
             doc.text(`This is to certify that Mr./Ms. ${emp.firstName} ${emp.lastName} (Employee Code: ${emp.employeeCode}) was employed with ${settings.companyName} as a ${emp.designation} in the ${emp.department} department from ${new Date(emp.dateOfJoining).toLocaleDateString('en-IN')} to ${new Date(exit.lastWorkingDay).toLocaleDateString('en-IN')}.`);
@@ -756,7 +812,7 @@ exports.generateDocument = async (req, res) => {
         } else if (type === 'relieving_letter') {
             doc.fontSize(14).text('RELIEVING LETTER', { align: 'center', underline: true });
             doc.moveDown(2);
-            doc.fontSize(11).leading(1.6);
+            doc.fontSize(11);
             doc.text(`Date: ${formattedDate}`);
             doc.moveDown(1.5);
             doc.text(`To,`);
@@ -777,7 +833,7 @@ exports.generateDocument = async (req, res) => {
         } else if (type === 'gratuity_sheet' || type === 'gratuity-sheet') {
             doc.fontSize(14).text('GRATUITY CALCULATION SHEET', { align: 'center', underline: true });
             doc.moveDown(2);
-            doc.fontSize(11).leading(1.6);
+            doc.fontSize(11);
             doc.text(`Date: ${formattedDate}`);
             doc.moveDown(1);
             doc.text(`Employee Code: ${emp.employeeCode}`);
@@ -1182,7 +1238,7 @@ exports.getResignationStatus = async (req, res) => {
 // GET /api/exit/documents-download/:type
 exports.downloadSelfDocument = async (req, res, next) => {
     try {
-        const { type } = req.params;
+        const type = req.params.typeOrId || req.params.type;
         const employeeId = req.user.employeeId;
         if (!employeeId) return res.status(400).send('Employee ID not linked to your user account.');
 

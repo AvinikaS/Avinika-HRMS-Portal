@@ -424,8 +424,11 @@ export default function ExitManagement() {
     };
 
     const handleMarkPaid = async () => {
+        if (!ffForm.transactionReference || ffForm.transactionReference.trim() === '') {
+            return toast.error('Please enter the Transaction Reference Number');
+        }
         try {
-            await api.post('/mark-paid', {
+            await api.post('/exit/mark-paid', {
                 exitRequestId: selectedExit.exitRequestDetails._id,
                 paymentMode: ffForm.paymentMode,
                 transactionReference: ffForm.transactionReference,
@@ -441,7 +444,7 @@ export default function ExitManagement() {
 
     const handleCompleteExit = async (exitReqId) => {
         try {
-            await api.post('/complete', { exitRequestId: exitReqId });
+            await api.post('/exit/complete', { exitRequestId: exitReqId });
             toast.success('Exit process completed successfully. Employee active master deactivated.');
             fetchExits();
         } catch (err) {
@@ -830,9 +833,9 @@ export default function ExitManagement() {
                                                                 </div>
                                                             ) : (
                                                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id}?type=ff_letter`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="F&F Letter"><HiOutlineDocumentDownload /> F&F</a>
-                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id}?type=experience_letter`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Experience Letter">Exp</a>
-                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id}?type=relieving_letter`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Relieving Letter">Rel</a>
+                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=ff_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="F&F Letter"><HiOutlineDocumentDownload /> F&F</a>
+                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=experience_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Experience Letter">Exp</a>
+                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=relieving_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Relieving Letter">Rel</a>
                                                                 </div>
                                                             )
                                                         )}
@@ -932,29 +935,29 @@ export default function ExitManagement() {
                             <h4>Settlement Statement Inputs</h4>
                             <div className="form-group" style={{ marginBottom: 10 }}>
                                 <label className="form-label" style={{ fontSize: 12 }}>Pending Days Salary (Worked but unpaid)</label>
-                                <input type="number" className="form-control" value={ffForm.pendingSalary} onChange={e => handleFFFormChange({ pendingSalary: Number(e.target.value) })} />
+                                <input type="number" className="form-control" value={ffForm.pendingSalary} onChange={e => handleFFFormChange({ pendingSalary: Number(e.target.value) })} readOnly={ffCalculation?.isLocked} />
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 10 }}>
                                 <label className="form-label" style={{ fontSize: 12 }}>Leave Encashment Amount</label>
-                                <input type="number" className="form-control" value={ffForm.leaveEncashment} onChange={e => handleFFFormChange({ leaveEncashment: Number(e.target.value) })} />
+                                <input type="number" className="form-control" value={ffForm.leaveEncashment} onChange={e => handleFFFormChange({ leaveEncashment: Number(e.target.value) })} readOnly={ffCalculation?.isLocked} />
                                 <small style={{ color: 'var(--text-tertiary)' }}>Pending Earned Leaves: {ffCalculation.earnedLeaves} Days</small>
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 10 }}>
                                 <label className="form-label" style={{ fontSize: 12 }}>Gratuity Amount</label>
-                                <input type="number" className="form-control" value={ffForm.gratuityAmount} onChange={e => handleFFFormChange({ gratuityAmount: Number(e.target.value) })} readOnly={selectedExit.reason === 'termination_misconduct'} />
+                                <input type="number" className="form-control" value={ffForm.gratuityAmount} onChange={e => handleFFFormChange({ gratuityAmount: Number(e.target.value) })} readOnly={selectedExit.reason === 'termination_misconduct' || ffCalculation?.isLocked} />
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 10 }}>
                                 <label className="form-label" style={{ fontSize: 12 }}>Other Adhoc Earnings</label>
-                                <input type="number" className="form-control" value={ffForm.otherEarnings} onChange={e => handleFFFormChange({ otherEarnings: Number(e.target.value) })} />
+                                <input type="number" className="form-control" value={ffForm.otherEarnings} onChange={e => handleFFFormChange({ otherEarnings: Number(e.target.value) })} readOnly={ffCalculation?.isLocked} />
                             </div>
 
                             <h5 style={{ marginTop: 16 }}>Deductions & Recoveries</h5>
                             <div className="form-group" style={{ marginBottom: 10 }}>
                                 <label className="form-label" style={{ fontSize: 12 }}>Notice Period Recovery shortfall</label>
-                                <input type="number" className="form-control" value={ffForm.noticePeriodRecovery} onChange={e => handleFFFormChange({ noticePeriodRecovery: Number(e.target.value) })} />
+                                <input type="number" className="form-control" value={ffForm.noticePeriodRecovery} onChange={e => handleFFFormChange({ noticePeriodRecovery: Number(e.target.value) })} readOnly={ffCalculation?.isLocked} />
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 10 }}>
@@ -970,7 +973,7 @@ export default function ExitManagement() {
 
                             <div className="form-group" style={{ marginBottom: 16 }}>
                                 <label className="form-label" style={{ fontSize: 12 }}>Other Adhoc Deductions (e.g. Asset loss)</label>
-                                <input type="number" className="form-control" value={ffForm.otherDeductions} onChange={e => handleFFFormChange({ otherDeductions: Number(e.target.value) })} />
+                                <input type="number" className="form-control" value={ffForm.otherDeductions} onChange={e => handleFFFormChange({ otherDeductions: Number(e.target.value) })} readOnly={ffCalculation?.isLocked} />
                             </div>
 
                             {/* Nominee details for death case */}
@@ -979,21 +982,21 @@ export default function ExitManagement() {
                                     <h5 style={{ margin: 0, marginBottom: 8, color: '#d97706' }}>Nominee Information (Required)</h5>
                                     <div className="form-group" style={{ marginBottom: 8 }}>
                                         <label style={{ fontSize: 11 }}>Nominee Name</label>
-                                        <input className="form-control form-control-sm" value={ffForm.nomineeName} onChange={e => setFnfForm({ ...ffForm, nomineeName: e.target.value })} />
+                                        <input className="form-control form-control-sm" value={ffForm.nomineeName} onChange={e => setFnfForm({ ...ffForm, nomineeName: e.target.value })} disabled={ffCalculation?.isLocked} />
                                     </div>
                                     <div className="form-row">
                                         <div className="form-group">
                                             <label style={{ fontSize: 11 }}>Nominee Relationship</label>
-                                            <input className="form-control form-control-sm" value={ffForm.nomineeRelationship} onChange={e => setFnfForm({ ...ffForm, nomineeRelationship: e.target.value })} />
+                                            <input className="form-control form-control-sm" value={ffForm.nomineeRelationship} onChange={e => setFnfForm({ ...ffForm, nomineeRelationship: e.target.value })} disabled={ffCalculation?.isLocked} />
                                         </div>
                                         <div className="form-group">
                                             <label style={{ fontSize: 11 }}>Nominee Bank Account</label>
-                                            <input className="form-control form-control-sm" value={ffForm.nomineeBankAccount} onChange={e => setFnfForm({ ...ffForm, nomineeBankAccount: e.target.value })} />
+                                            <input className="form-control form-control-sm" value={ffForm.nomineeBankAccount} onChange={e => setFnfForm({ ...ffForm, nomineeBankAccount: e.target.value })} disabled={ffCalculation?.isLocked} />
                                         </div>
                                     </div>
                                     <div className="form-group" style={{ marginTop: 8 }}>
                                         <label style={{ fontSize: 11 }}>Nominee Bank IFSC</label>
-                                        <input className="form-control form-control-sm" value={ffForm.nomineeIFSC} onChange={e => setFnfForm({ ...ffForm, nomineeIFSC: e.target.value })} />
+                                        <input className="form-control form-control-sm" value={ffForm.nomineeIFSC} onChange={e => setFnfForm({ ...ffForm, nomineeIFSC: e.target.value })} disabled={ffCalculation?.isLocked} />
                                     </div>
                                 </div>
                             )}
@@ -1015,12 +1018,12 @@ export default function ExitManagement() {
                             {selectedExit.exitRequestDetails?.clearanceStatus !== 'Cleared' && (
                                 <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 11, color: '#b45309' }}>
                                     ⚠️ Clearance checklist is incomplete! Please provide override explanation below:
-                                    <input className="form-control form-control-sm" style={{ marginTop: 4 }} placeholder="e.g. Cleared pending IT review override" value={ffForm.checklistOverrideReason} onChange={e => setFnfForm({ ...ffForm, checklistOverrideReason: e.target.value })} />
+                                    <input className="form-control form-control-sm" style={{ marginTop: 4 }} placeholder="e.g. Cleared pending IT review override" value={ffForm.checklistOverrideReason} onChange={e => setFnfForm({ ...ffForm, checklistOverrideReason: e.target.value })} disabled={ffCalculation?.isLocked} />
                                 </div>
                             )}
 
-                            <button className="btn btn-primary" style={{ width: '100%', marginBottom: 12 }} onClick={handleApproveFF}>
-                                Approve & Lock F&F Details
+                            <button className="btn btn-primary" style={{ width: '100%', marginBottom: 12, opacity: ffCalculation?.isLocked ? 0.7 : 1 }} onClick={handleApproveFF} disabled={ffCalculation?.isLocked}>
+                                {ffCalculation?.isLocked ? 'Approved & Locked' : 'Approve & Lock F&F Details'}
                             </button>
 
                             {/* Payment details form when approved */}

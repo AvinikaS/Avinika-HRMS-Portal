@@ -25,7 +25,8 @@ const payrollSchema = new mongoose.Schema({
         incentive: { type: Number, default: 0 },
         overtime: { type: Number, default: 0 },
         loanDisbursal: { type: Number, default: 0 },
-        advanceDisbursal: { type: Number, default: 0 }
+        advanceDisbursal: { type: Number, default: 0 },
+        expenseReimbursement: { type: Number, default: 0 }
     },
 
     deductions: {

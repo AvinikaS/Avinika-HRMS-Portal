@@ -31,4 +31,19 @@ router.post('/signature', protect, (req, res) => {
     }
 });
 
+// DELETE /api/upload/file
+// Deletes a file from Cloudinary given its public_id
+router.delete('/file', protect, async (req, res) => {
+    try {
+        const { publicId } = req.body;
+        if (!publicId) {
+            return res.status(400).json({ success: false, message: 'publicId is required' });
+        }
+        const result = await cloudinary.uploader.destroy(publicId);
+        res.json({ success: true, data: result });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 module.exports = router;
