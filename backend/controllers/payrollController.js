@@ -16,6 +16,40 @@ exports.generatePayroll = async (req, res) => {
 
         // If regenerate flag is set, delete existing payroll records first and rollback deductions
         if (regenerate) {
+            // Restore any Attendance Arrear adjustments and sync Attendance record back to Absent for closed month
+            const AttendanceRegularization = require('../models/AttendanceRegularization.model');
+            const PayrollAdjustment = require('../models/PayrollAdjustment.model');
+            const Attendance = require('../models/Attendance');
+
+            const activeArrears = await PayrollAdjustment.find({
+                sourceType: 'ATTENDANCE_REGULARIZATION',
+                adjustmentType: 'ATTENDANCE_ARREAR',
+                status: { $in: ['DRAFT', 'PENDING_HR_APPROVAL', 'PENDING_SUPERADMIN_APPROVAL', 'APPROVED', 'CANCELLED'] }
+            });
+
+            for (const adj of activeArrears) {
+                if (adj.sourceId) {
+                    const reg = await AttendanceRegularization.findById(adj.sourceId);
+                    if (reg && reg.status === 'APPROVED') {
+                        if (['DRAFT', 'PENDING_HR_APPROVAL', 'CANCELLED'].includes(adj.status)) {
+                            adj.status = adj.amount > 5000 ? 'PENDING_SUPERADMIN_APPROVAL' : 'APPROVED';
+                            await adj.save();
+                        }
+                        reg.payrollStatus = 'PAYROLL_PROCESSED';
+                        await reg.save();
+
+                        // Set Attendance record back to Absent for closed payroll month so My Attendance shows Absent
+                        const targetDate = new Date(reg.attendanceDate);
+                        const startOfDay = new Date(targetDate); startOfDay.setHours(0, 0, 0, 0);
+                        const endOfDay = new Date(targetDate); endOfDay.setHours(23, 59, 59, 999);
+                        await Attendance.findOneAndUpdate(
+                            { employee: reg.employeeId, date: { $gte: startOfDay, $lte: endOfDay } },
+                            { status: 'Absent', notes: `Regularized via Payroll Arrear Adjustment (${reg.reason})` }
+                        );
+                    }
+                }
+            }
+
             const deleteQuery = { month, year };
             if (employeeId) deleteQuery.employee = employeeId;
             await Payroll.deleteMany(deleteQuery);

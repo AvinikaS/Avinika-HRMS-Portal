@@ -7,7 +7,8 @@ router.use(protect);
 
 router.get('/', loanController.getLoans);
 router.post('/', loanController.applyLoan);
-router.put('/:id/status', authorize('SuperAdmin', 'HRAdmin'), loanController.updateLoanStatus);
+router.put('/:id/status', loanController.updateLoanStatus);
+router.put('/:id/settle', authorize('SuperAdmin', 'HRAdmin'), loanController.settleLoan);
 router.put('/:id/restructure', authorize('SuperAdmin', 'HRAdmin'), loanController.changeRepaymentTerm);
 router.put('/:id/override', authorize('SuperAdmin', 'HRAdmin'), loanController.overrideEMI);
 router.put('/:id', loanController.updateLoan);

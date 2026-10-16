@@ -14,7 +14,14 @@ const adminNavItems = [
     { path: '/', label: 'Dashboard', icon: HiOutlineViewGrid },
     { section: 'HR Management' },
     { path: '/employees', label: 'Employees', icon: HiOutlineUserGroup },
-    { path: '/attendance', label: 'Attendance', icon: HiOutlineClock },
+    {
+        label: 'Attendance Management', icon: HiOutlineClock, children: [
+            { path: '/attendance', label: 'Daily Attendance' },
+            { path: '/hradmin/attendance/regularization', label: 'Attendance Regularization' },
+            { path: '/superadmin/payroll-adjustments', label: 'Adjustment Approvals' },
+            { path: '/superadmin/attendance-audit', label: 'Attendance Audit Trail' },
+        ]
+    },
     { path: '/leaves', label: 'Leave Management', icon: HiOutlineCalendar },
     {
         label: 'Payroll', icon: HiOutlineCurrencyDollar, children: [
@@ -25,6 +32,7 @@ const adminNavItems = [
             { path: '/payroll/loans', label: 'Loan' },
             { path: '/payroll/advances', label: 'Advance Salary' },
             { path: '/payroll/tax', label: 'Income Tax & Form 16' },
+            { path: '/hradmin/payroll-adjustments', label: 'Payroll Adjustments' },
             { path: '/payroll/reports?tab=pf', label: 'PF Challan' },
             { path: '/payroll/reports?tab=esic', label: 'ESIC Challan' },
             { path: '/payroll/reports?tab=form24q', label: 'Form 24Q' },
@@ -73,7 +81,12 @@ const adminNavItems = [
 const employeeNavItems = [
     { section: 'Self Service' },
     { path: '/', label: 'My Dashboard', icon: HiOutlineViewGrid },
-    { path: '/my-attendance', label: 'My Attendance', icon: HiOutlineClock },
+    {
+        label: 'Attendance', icon: HiOutlineClock, children: [
+            { path: '/my-attendance', label: 'My Attendance' },
+            { path: '/my-regularizations', label: 'Attendance Regularization' },
+        ]
+    },
     { path: '/my-leaves', label: 'My Leaves', icon: HiOutlineCalendar },
     { path: '/my-payslips', label: 'My Payslips', icon: HiOutlineCurrencyDollar },
     { path: '/my-profile', label: 'My Profile', icon: HiOutlineUser },
@@ -143,13 +156,17 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                                     <div
                                         className={`nav-item ${isActiveGroup ? 'active-group' : ''}`}
                                         onClick={() => setExpanded({ ...expanded, [item.label]: !isExpanded })}
-                                        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', paddingRight: '14px' }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span className="nav-icon"><item.icon /></span>
-                                            <span className="nav-text">{item.label}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                                            <span className="nav-icon" style={{ flexShrink: 0 }}><item.icon /></span>
+                                            <span className="nav-text" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>{item.label}</span>
                                         </div>
-                                        {!collapsed && (isExpanded ? <HiOutlineChevronUp size={14} /> : <HiOutlineChevronDown size={14} />)}
+                                        {!collapsed && (
+                                            <span style={{ flexShrink: 0, opacity: 0.9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {isExpanded ? <HiOutlineChevronUp size={18} /> : <HiOutlineChevronDown size={18} />}
+                                            </span>
+                                        )}
                                     </div>
                                     {isExpanded && !collapsed && (
                                         <div className="submenu" style={{ background: 'rgba(0,0,0,0.02)', padding: '4px 0' }}>
@@ -166,7 +183,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
                                                 const isChildActive = childTargetTab
                                                     ? location.pathname === childPathOnly && currentTab === childTargetTab
-                                                    : location.pathname === childPathOnly && !currentTab;
+                                                    : location.pathname === childPathOnly;
 
                                                 return (
                                                     <NavLink

@@ -11,6 +11,7 @@ export default function MyProfile() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(true);
     const [profileImage, setProfileImage] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [employeeData, setEmployeeData] = useState(null);
@@ -33,6 +34,7 @@ export default function MyProfile() {
                 }
                 setProfileImage(data.user?.profileImage || null);
             } catch { }
+            setProfileLoading(false);
         };
         fetchProfile();
     }, []);
@@ -106,13 +108,17 @@ export default function MyProfile() {
         setLoading(false);
     };
 
-    const displayName = employeeData
-        ? `${employeeData.firstName} ${employeeData.lastName}`
-        : user?.email?.split('@')[0];
+    const displayName = profileLoading
+        ? '...'
+        : employeeData
+            ? `${employeeData.firstName} ${employeeData.lastName}`
+            : user?.email?.split('@')[0];
 
-    const initials = employeeData
-        ? `${employeeData.firstName?.charAt(0) || ''}${employeeData.lastName?.charAt(0) || ''}`
-        : user?.email?.charAt(0).toUpperCase();
+    const initials = profileLoading
+        ? ''
+        : employeeData
+            ? `${employeeData.firstName?.charAt(0) || ''}${employeeData.lastName?.charAt(0) || ''}`
+            : user?.email?.charAt(0).toUpperCase();
 
     return (
         <div className="animate-fadeIn">
@@ -206,12 +212,9 @@ export default function MyProfile() {
                         </div>
                         {employeeData && (
                             <div className="form-row">
-                                <div className="form-group"><label className="form-label">Phone</label><input className="form-control" value={employeeData.phone || ''} readOnly /></div>
                                 <div className="form-group"><label className="form-label">Date of Birth</label><input className="form-control" value={employeeData.dateOfBirth ? new Date(employeeData.dateOfBirth).toLocaleDateString('en-GB') : ''} readOnly /></div>
+                                <div className="form-group"><label className="form-label">Residential Address</label><input className="form-control" value={employeeData.address || ''} readOnly /></div>
                             </div>
-                        )}
-                        {employeeData && (
-                            <div className="form-group"><label className="form-label">Residential Address</label><input className="form-control" value={employeeData.address || ''} readOnly /></div>
                         )}
 
                         {/* Change Password */}

@@ -196,6 +196,8 @@ exports.submitResignation = async (req, res) => {
     }
 };
 
+
+
 // GET /api/exit
 exports.getAllExits = async (req, res) => {
     try {
@@ -205,11 +207,25 @@ exports.getAllExits = async (req, res) => {
         for (const ex of exits) {
             if (ex.approvalStatus === 'pending' && ex.employeeId && ex.employeeId.status === 'On Notice') {
                 await Employee.findByIdAndUpdate(ex.employeeId._id, { status: 'Active' });
-                ex.employeeId.status = 'Active'; // update in populated memory object
+                ex.employeeId.status = 'Active';
             }
         }
 
-        // Map fields to have backward compatibility with old frontend expected format
+        // Fetch all FFSettlement records for these exits in one query
+        // Sort by updatedAt desc so the most recently updated (paid) record wins
+        const exitIds = exits.map(ex => ex._id);
+        const settlements = await FFSettlement.find({ exitRequestId: { $in: exitIds } }).sort({ updatedAt: -1 });
+        const settlementMap = {};
+        const statusRank = { 'paid': 3, 'processed': 2, 'pending': 1 };
+        settlements.forEach(s => {
+            const key = s.exitRequestId.toString();
+            const existing = settlementMap[key];
+            // Keep the settlement with the highest status rank (paid > processed > pending)
+            if (!existing || (statusRank[s.paymentStatus] || 0) > (statusRank[existing.paymentStatus] || 0)) {
+                settlementMap[key] = s;
+            }
+        });
+
         const mapped = exits.map(ex => {
             const legacyStatus = ex.approvalStatus === 'pending' ? 'Pending'
                 : ex.approvalStatus === 'hr_approved' ? 'Checklist Pending'
@@ -237,7 +253,8 @@ exports.getAllExits = async (req, res) => {
                     leavesSettled: ex.clearanceChecklist?.leavesSettled || false,
                     itAdminClearance: ex.clearanceChecklist?.itAdminClearance || false
                 },
-                exitRequestDetails: ex
+                exitRequestDetails: ex,
+                ffSettlement: settlementMap[ex._id.toString()] || null
             };
         });
 
@@ -684,7 +701,8 @@ exports.markPaid = async (req, res) => {
     try {
         const { exitRequestId, paymentDate, paymentMode, transactionReference } = req.body;
 
-        const settlement = await FFSettlement.findOne({ exitRequestId });
+        // Get the most recently created/approved settlement for this exit
+        const settlement = await FFSettlement.findOne({ exitRequestId }).sort({ createdAt: -1 });
         if (!settlement) return res.status(404).json({ success: false, message: 'F&F settlement record not found.' });
 
         settlement.paymentStatus = 'paid';
@@ -709,6 +727,16 @@ exports.completeExit = async (req, res) => {
 
         exit.approvalStatus = 'completed'; // fully complete status
         await exit.save();
+
+        // Ensure settlement paymentStatus is updated to paid
+        const settlement = await FFSettlement.findOne({ exitRequestId }).sort({ createdAt: -1 });
+        if (settlement && settlement.paymentStatus !== 'paid') {
+            settlement.paymentStatus = 'paid';
+            if (!settlement.paymentDate) settlement.paymentDate = new Date();
+            if (!settlement.paymentMode) settlement.paymentMode = 'Bank Transfer';
+            if (!settlement.transactionReference) settlement.transactionReference = 'TXN-COMPLETED';
+            await settlement.save();
+        }
 
         // Deactivate employee & save leaving date
         await Employee.findByIdAndUpdate(exit.employeeId, { status: 'Inactive', dateOfLeaving: exit.lastWorkingDay });

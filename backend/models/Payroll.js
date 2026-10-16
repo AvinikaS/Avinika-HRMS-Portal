@@ -21,6 +21,7 @@ const payrollSchema = new mongoose.Schema({
         conveyance: { type: Number, default: 0 },
         medicalAllowance: { type: Number, default: 0 },
         otherAllowance: { type: Number, default: 0 },
+        arrears: { type: Number, default: 0 },
         bonus: { type: Number, default: 0 },
         incentive: { type: Number, default: 0 },
         overtime: { type: Number, default: 0 },
@@ -28,6 +29,14 @@ const payrollSchema = new mongoose.Schema({
         advanceDisbursal: { type: Number, default: 0 },
         expenseReimbursement: { type: Number, default: 0 }
     },
+
+    adjustments: [{
+        adjustmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'PayrollAdjustment' },
+        adjustmentType: String,
+        label: String,
+        direction: String, // CREDIT or DEBIT
+        amount: Number
+    }],
 
     deductions: {
         pf: { type: Number, default: 0 },

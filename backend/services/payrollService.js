@@ -14,8 +14,17 @@ exports.rollbackPayrollDeductions = async (month, year, employeeId = null) => {
 
     const loansToRollback = await Loan.find(loanQuery);
     for (const loan of loansToRollback) {
+        // Do NOT rollback past deductions for Cancelled loans
+        if (loan.status === 'Cancelled') continue;
+
         const historyItemIndex = loan.recoveryHistory.findIndex(h => h.month === month && h.year === year);
         if (historyItemIndex !== -1) {
+            // If loan is Closed, only rollback if it was closed by THIS payroll month's deduction
+            if (loan.status === 'Closed') {
+                const wasClosedInThisPayroll = loan.history.some(h => h.status === 'Closed' && h.remark && h.remark.includes(`${month}/${year}`));
+                if (!wasClosedInThisPayroll) continue;
+            }
+
             const deductedAmount = loan.recoveryHistory[historyItemIndex].amountDeducted;
             loan.outstandingAmount += deductedAmount;
             loan.recoveryHistory.splice(historyItemIndex, 1);
@@ -48,6 +57,7 @@ exports.rollbackPayrollDeductions = async (month, year, employeeId = null) => {
             await adv.save();
         }
     }
+
 };
 
 /**
@@ -72,6 +82,7 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
     const employees = [];
     const payrollStart = new Date(year, month - 1, 1);
     const ExitRequest = require('../models/ExitRequest');
+    const FFSettlement = require('../models/FFSettlement');
 
     for (const emp of candidateEmployees) {
         if (!emp) continue;
@@ -81,35 +92,40 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
             continue;
         }
 
-        // Active statuses are always eligible
-        if (['Active', 'On Notice', 'Exit In Progress'].includes(emp.status)) {
-            employees.push(emp);
-            continue;
-        }
-
-        // Inactive / Resigned / Terminated checks:
-        // 1. Check if dateOfLeaving is in the payroll month or future
-        if (emp.dateOfLeaving && new Date(emp.dateOfLeaving) >= payrollStart) {
-            employees.push(emp);
-            continue;
-        }
-
-        // 2. Check if there is an approved or completed exit request
+        // Check if employee has an active/completed exit or F&F settlement
         const exitReq = await ExitRequest.findOne({
             employeeId: emp._id,
             approvalStatus: { $ne: 'rejected' }
         }).sort({ createdAt: -1 });
 
-        if (exitReq) {
-            // If exit process is fully completed, DO NOT include in regular monthly payroll (as F&F settlement handles their final payout)
-            if (exitReq.approvalStatus === 'completed' || emp.status === 'Inactive') {
-                continue;
-            }
-            if (exitReq.lastWorkingDay && new Date(exitReq.lastWorkingDay) >= payrollStart) {
-                employees.push(emp);
+        const ffSettlement = await FFSettlement.findOne({
+            employeeId: emp._id,
+            paymentStatus: { $in: ['processed', 'paid'] }
+        });
+
+        // 1. If F&F settlement is completed/paid or exit process is fully completed, DO NOT include in regular monthly payroll
+        if (exitReq && exitReq.approvalStatus === 'completed') {
+            continue;
+        }
+        if (ffSettlement) {
+            continue;
+        }
+
+        // 2. Check last working day / date of leaving vs payroll period
+        const lwd = (exitReq && exitReq.lastWorkingDay) ? new Date(exitReq.lastWorkingDay) : (emp.dateOfLeaving ? new Date(emp.dateOfLeaving) : null);
+        if (lwd && lwd < payrollStart) {
+            // Employee left prior to this payroll month starting
+            continue;
+        }
+
+        // 3. Status checks: if marked Inactive / Resigned / Terminated and no valid work in this month, skip
+        if (['Inactive', 'Resigned', 'Terminated'].includes(emp.status)) {
+            if (!lwd || lwd < payrollStart) {
                 continue;
             }
         }
+
+        employees.push(emp);
     }
 
     const Setting = require('../models/Setting');
@@ -315,6 +331,21 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
             }
         }
 
+        // Include historical recoveryHistory for loans that have existing records for this month/year (e.g. cancelled/manually settled)
+        const historicalLoans = await Loan.find({
+            employee: emp._id,
+            'recoveryHistory': { $elemMatch: { month, year } }
+        });
+        const processedIds = new Set(activeLoans.map(l => l._id.toString()));
+        for (const hLoan of historicalLoans) {
+            if (!processedIds.has(hLoan._id.toString())) {
+                const rec = hLoan.recoveryHistory.find(h => h.month === month && h.year === year);
+                if (rec && rec.amountDeducted > 0) {
+                    loanEmi += rec.amountDeducted;
+                }
+            }
+        }
+
         // Advance Recovery
         const AdvanceSalary = require('../models/AdvanceSalary');
         let advanceRecovery = 0;
@@ -379,9 +410,42 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
         });
         const expenseReimbursement = reimbursableExpenses.reduce((sum, e) => sum + (e.amountApproved || 0), 0);
 
+        // 3.5 Payroll Adjustments
+        const PayrollAdjustment = require('../models/PayrollAdjustment.model');
+        const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+        const approvedAdjustments = await PayrollAdjustment.find({
+            employeeId: emp._id,
+            adjustmentPayrollMonth: monthStr,
+            status: 'APPROVED'
+        });
+
+        let creditAdjustmentsSum = 0;
+        let debitAdjustmentsSum = 0;
+        const appliedAdjustmentsList = [];
+
+        for (const adj of approvedAdjustments) {
+            if (adj.direction === 'CREDIT') {
+                creditAdjustmentsSum += adj.amount || 0;
+            } else if (adj.direction === 'DEBIT') {
+                debitAdjustmentsSum += adj.amount || 0;
+            }
+
+            appliedAdjustmentsList.push({
+                adjustmentId: adj._id,
+                adjustmentType: adj.adjustmentType,
+                label: adj.payslipLabel || adj.reason || `Adjustment - ${adj.originalPayrollMonth}`,
+                direction: adj.direction,
+                amount: adj.amount || 0
+            });
+        }
+
         // 4. Final Totals
-        const totalEarnings = basic + hra + allowances + totalBonus + dynamicIncentive + overtimePay + loanDisbursal + advanceDisbursal + expenseReimbursement;
-        const totalDeductions = pf + esic + tax + leaveDeduction + loanEmi + advanceRecovery;
+        const updatedOtherAllowance = otherAllowance;
+        const updatedArrears = creditAdjustmentsSum;
+        const updatedLeaveDeduction = leaveDeduction + debitAdjustmentsSum;
+
+        const totalEarnings = basic + hra + allowances + totalBonus + dynamicIncentive + overtimePay + loanDisbursal + advanceDisbursal + expenseReimbursement + updatedOtherAllowance + updatedArrears;
+        const totalDeductions = pf + esic + tax + updatedLeaveDeduction + loanEmi + advanceRecovery;
         const netSalary = totalEarnings - totalDeductions;
 
         const payroll = await Payroll.create({
@@ -400,7 +464,8 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
                 specialAllowance,
                 conveyance,
                 medicalAllowance,
-                otherAllowance,
+                otherAllowance: updatedOtherAllowance,
+                arrears: updatedArrears,
                 bonus: totalBonus,
                 incentive: dynamicIncentive,
                 overtime: overtimePay,
@@ -408,11 +473,12 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
                 advanceDisbursal,
                 expenseReimbursement
             },
+            adjustments: appliedAdjustmentsList,
             deductions: {
                 pf,
                 esic,
                 tax,
-                leaveDeduction,
+                leaveDeduction: updatedLeaveDeduction,
                 loanEmi,
                 advanceRecovery
             },
@@ -438,6 +504,14 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
             netSalary,
             status: 'Generated'
         });
+
+        // Mark adjustments as APPLIED
+        for (const adj of approvedAdjustments) {
+            adj.status = 'APPLIED';
+            adj.appliedToPayrollId = payroll._id;
+            adj.appliedAt = new Date();
+            await adj.save();
+        }
 
         results.push(payroll);
     }

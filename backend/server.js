@@ -98,6 +98,8 @@ app.use('/api/helpdesk', require('./routes/helpdesk'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/cron', require('./routes/cron'));
 app.use("/api/expenses", require("./routes/expense.routes"));
+app.use('/api', require('./routes/attendanceRegularization.routes'));
+app.use('/api', require('./routes/payrollAdjustment.routes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

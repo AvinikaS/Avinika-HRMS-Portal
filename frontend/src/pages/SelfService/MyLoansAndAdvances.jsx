@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import Swal from 'sweetalert2';
 import { HiOutlineCash, HiOutlinePlus, HiOutlineX, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 
 export default function MyLoansAndAdvances() {
@@ -19,7 +20,7 @@ export default function MyLoansAndAdvances() {
         expectedMonth: new Date().getMonth() + 1, expectedYear: new Date().getFullYear(),
         emiStartMonth: new Date().getMonth() + 2 > 12 ? 1 : new Date().getMonth() + 2,
         emiStartYear: new Date().getMonth() + 2 > 12 ? new Date().getFullYear() + 1 : new Date().getFullYear(),
-        repaymentTerms: 12, interestType: 'No Interest', interestRate: 0, reason: ''
+        repaymentTerms: 12, reason: '', preferredPaymentMethod: 'Payroll System'
     });
 
     const [advanceForm, setAdvanceForm] = useState({
@@ -49,7 +50,6 @@ export default function MyLoansAndAdvances() {
     const calculateDemoEmi = () => {
         if (!loanForm.amount || !loanForm.repaymentTerms) return { total: 0, emi: 0 };
         let total = Number(loanForm.amount);
-        if (loanForm.interestType === 'Flat Interest') total += (total * (Number(loanForm.interestRate) / 100));
         return { total, emi: Math.ceil(total / Number(loanForm.repaymentTerms)) };
     };
     const demoLoan = calculateDemoEmi();
@@ -89,7 +89,18 @@ export default function MyLoansAndAdvances() {
     };
 
     const deleteLoan = async (id) => {
-        if (!window.confirm('Are you sure you want to cancel and delete this loan request?')) return;
+        const result = await Swal.fire({
+            title: 'Delete Loan Request?',
+            text: 'Are you sure you want to cancel and delete this loan request?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#f1f5f9',
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: '<span style="color: #475569; font-weight: 600;">Cancel</span>',
+            reverseButtons: true
+        });
+        if (!result.isConfirmed) return;
         try {
             await api.delete(`/loans/${id}`);
             toast.success('Loan request deleted');
@@ -98,7 +109,18 @@ export default function MyLoansAndAdvances() {
     };
 
     const deleteAdvance = async (id) => {
-        if (!window.confirm('Are you sure you want to cancel and delete this advance request?')) return;
+        const result = await Swal.fire({
+            title: 'Delete Advance Request?',
+            text: 'Are you sure you want to cancel and delete this advance request?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#f1f5f9',
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: '<span style="color: #475569; font-weight: 600;">Cancel</span>',
+            reverseButtons: true
+        });
+        if (!result.isConfirmed) return;
         try {
             await api.delete(`/advances/${id}`);
             toast.success('Advance request deleted');
@@ -114,7 +136,7 @@ export default function MyLoansAndAdvances() {
                 otherLoanCategory: !['Personal Loan', 'Home Loan', 'Car Loan'].includes(loan.loanCategory) ? loan.loanCategory : '',
                 amount: loan.amount, expectedMonth: loan.expectedMonth, expectedYear: loan.expectedYear,
                 emiStartMonth: loan.emiStartMonth, emiStartYear: loan.emiStartYear, repaymentTerms: loan.repaymentTerms,
-                interestType: loan.interestType, interestRate: loan.interestRate || 0, reason: loan.reason || ''
+                reason: loan.reason || '', preferredPaymentMethod: loan.preferredPaymentMethod || 'Payroll System'
             });
         } else {
             setEditLoanId(null);
@@ -123,7 +145,7 @@ export default function MyLoansAndAdvances() {
                 expectedMonth: new Date().getMonth() + 1, expectedYear: new Date().getFullYear(),
                 emiStartMonth: new Date().getMonth() + 2 > 12 ? 1 : new Date().getMonth() + 2,
                 emiStartYear: new Date().getMonth() + 2 > 12 ? new Date().getFullYear() + 1 : new Date().getFullYear(),
-                repaymentTerms: 12, interestType: 'No Interest', interestRate: 0, reason: ''
+                repaymentTerms: 12, reason: '', preferredPaymentMethod: 'Payroll System'
             });
         }
         setShowLoanModal(true);
@@ -147,6 +169,75 @@ export default function MyLoansAndAdvances() {
             });
         }
         setShowAdvanceModal(true);
+    };
+
+    const handleViewLoanHistory = (loan) => {
+        const recoveryItems = [...(loan.recoveryHistory || [])]
+            .sort((a, b) => (a.year !== b.year ? a.year - b.year : a.month - b.month))
+            .map(r => {
+            const typeLabel = r.overrideType === 'FullSettlement' ? '✅ Full Settlement' : r.overrideType === 'PartialSettlement' ? '💳 Partial Settlement' : '📅 Monthly EMI Deduction';
+            const modeLabel = r.paymentMode || 'Payroll System';
+            const dateStr = r.settlementDate
+                ? new Date(r.settlementDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                : `${new Date(0, r.month - 1).toLocaleString('default', { month: 'short' })} ${r.year}`;
+            const refStr = r.transactionRef ? ` (Ref: ${r.transactionRef})` : '';
+            return `
+                <tr style="border-bottom:1px solid #e2e8f0;font-size:12px;">
+                    <td style="padding:8px 10px;font-weight:600;">${dateStr}</td>
+                    <td style="padding:8px 10px;"><span style="background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px;font-size:11px;">${typeLabel}</span></td>
+                    <td style="padding:8px 10px;">${modeLabel}${refStr}</td>
+                    <td style="padding:8px 10px;font-weight:700;color:#166534;text-align:right;">INR ${r.amountDeducted.toLocaleString('en-IN')}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const auditTimeline = (loan.history || []).map(h => {
+            const d = new Date(h.updatedAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return `
+                <div style="margin-bottom:10px;padding-left:12px;border-left:2px solid #6366f1;font-size:12px;">
+                    <div style="font-weight:600;color:#1e293b;">${h.status} <span style="font-size:11px;color:#64748b;font-weight:400;margin-left:6px;">${d}</span></div>
+                    <div style="color:#475569;margin-top:2px;">${h.remark || 'N/A'}</div>
+                </div>
+            `;
+        }).join('');
+
+        Swal.fire({
+            title: `Loan History & Settlement Trail`,
+            width: '640px',
+            html: `
+                <div style="text-align:left;font-size:13px;max-height:480px;overflow-y:auto;padding-right:4px;">
+                    <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <div style="font-weight:700;color:#1e293b;font-size:14px;">${loan.loanCategory}</div>
+                            <div style="color:#64748b;font-size:12px;margin-top:2px;">Original Loan Amount: <b>INR ${loan.amount.toLocaleString('en-IN')}</b></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:11px;color:#64748b;">Remaining Outstanding</div>
+                            <div style="font-weight:700;color:${loan.outstandingAmount > 0 ? '#b91c1c' : '#15803d'};font-size:15px;">INR ${loan.outstandingAmount.toLocaleString('en-IN')}</div>
+                        </div>
+                    </div>
+
+                    <div style="font-weight:700;color:#334155;margin-bottom:8px;font-size:13px;">💳 Payment & Settlement Records (${loan.recoveryHistory?.length || 0})</div>
+                    ${loan.recoveryHistory?.length > 0 ? `
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+                            <thead>
+                                <tr style="background:#f1f5f9;color:#475569;font-size:11px;text-align:left;">
+                                    <th style="padding:8px 10px;">Date / Period</th>
+                                    <th style="padding:8px 10px;">Type</th>
+                                    <th style="padding:8px 10px;">Payment Mode</th>
+                                    <th style="padding:8px 10px;text-align:right;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>${recoveryItems}</tbody>
+                        </table>
+                    ` : '<div style="color:#94a3b8;font-size:12px;margin-bottom:16px;font-style:italic;">No payment or settlement records yet.</div>'}
+
+                    <div style="font-weight:700;color:#334155;margin-bottom:8px;font-size:13px;">📜 Status Audit Log</div>
+                    <div>${auditTimeline || '<div style="color:#94a3b8;font-size:12px;">No history logs.</div>'}</div>
+                </div>
+            `,
+            confirmButtonText: 'Close'
+        });
     };
 
     const processedLoans = loans.map(l => ({
@@ -197,16 +288,17 @@ export default function MyLoansAndAdvances() {
                                 {processedLoans.length === 0 ? <tr><td colSpan="8" style={{ padding: 30, textAlign: 'center', color: '#94a3b8' }}>No loans requested</td></tr> : processedLoans.map(l => {
                                     const remainingTerms = l.repaymentTerms - (l.recoveryHistory?.length || 0);
                                     const monthName = new Date(0, l.emiStartMonth - 1).toLocaleString('default', { month: 'short' });
-                                    const isPayrollMode = ['Payroll System'].includes(l.disbursalMode) || !l.disbursalMode;
+                                    const activeMode = l.disbursalMode || l.preferredPaymentMethod || 'Payroll System';
+                                    const isPayrollMode = activeMode === 'Payroll System';
                                     let disbursalDate;
                                     if (l.status === 'Pending') {
-                                        disbursalDate = 'Initial Pending';
+                                        disbursalDate = 'Requested via ' + (l.preferredPaymentMethod || 'Payroll System');
                                     } else if (isPayrollMode) {
-                                        disbursalDate = `For ${new Date(0, l.expectedMonth - 1).toLocaleString('default', { month: 'short' })} ${l.expectedYear}`;
+                                        disbursalDate = `For ${new Date(0, (l.disbursalPayrollMonth || l.expectedMonth) - 1).toLocaleString('default', { month: 'short' })} ${l.disbursalPayrollYear || l.expectedYear}`;
                                     } else {
                                         disbursalDate = new Date(Math.max(new Date(l.createdAt), ...l.history.map(h => new Date(h.updatedAt)))).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
                                     }
-                                    const disbursalMode = l.status === 'Pending' ? 'Awaiting Approval' : (isPayrollMode ? 'Payroll System' : l.disbursalMode);
+                                    const disbursalModeLabel = l.status === 'Pending' ? `Awaiting Review (${l.preferredPaymentMethod || 'Payroll'})` : activeMode;
 
                                     return (
                                         <tr key={l._id} style={{ borderBottom: '1px solid #e2e8f0', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
@@ -217,13 +309,20 @@ export default function MyLoansAndAdvances() {
                                             <td style={{ padding: '12px 16px' }}>
                                                 <div style={{ color: '#1e293b', fontWeight: 600 }}>INR {l.outstandingAmount.toLocaleString('en-IN')}</div>
                                                 <div style={{ fontSize: '11px', color: '#64748b', marginTop: 2 }}>
-                                                    {l.interestType === 'Flat Interest' && l.interestRate > 0
-                                                        ? `(With ${l.interestRate}% Interest)`
-                                                        : '(Without Interest)'}
+                                                    {l.status === 'Offered'
+                                                        ? <span style={{ color: '#7c3aed', fontWeight: 600 }}>Offer: {l.interestType === 'No Interest' ? 'No Interest' : `${l.interestRate}% p.a. ${l.interestType}`}</span>
+                                                        : l.interestType === 'Reducing Balance' && l.interestRate > 0
+                                                            ? `(${l.interestRate}% p.a. Reducing)`
+                                                            : l.interestType === 'Flat Interest' && l.interestRate > 0
+                                                                ? `(${l.interestRate}% Flat Interest)`
+                                                                : '(Without Interest)'}
+                                                    {l.rejectionReason && (
+                                                        <div style={{ color: '#ef4444', marginTop: 4 }}>Reason: {l.rejectionReason}</div>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td style={{ padding: '12px 16px' }}>
-                                                <div style={{ color: '#334155', fontWeight: 500 }}>{disbursalMode}</div>
+                                                <div style={{ color: '#334155', fontWeight: 500 }}>{disbursalModeLabel}</div>
                                                 <div style={{ color: '#64748b', fontSize: '12px', marginTop: 2 }}>{disbursalDate}</div>
                                             </td>
                                             <td style={{ padding: '12px 16px', fontWeight: 500, color: '#1e293b' }}>
@@ -241,13 +340,46 @@ export default function MyLoansAndAdvances() {
                                                     let displayText = l.status;
                                                     let textColor = '#64748b';
                                                     if (l.status === 'Pending') { displayText = 'Pending Review'; textColor = '#d97706'; }
-                                                    else if (['Closed', 'Cancelled', 'Rejected'].includes(l.status)) { displayText = l.status; textColor = '#64748b'; }
+                                                    else if (l.status === 'Offered') { displayText = '📩 Offer Received'; textColor = '#7c3aed'; }
+                                                    else if (l.status === 'Rejected by Employee') { displayText = 'Offer Rejected by You'; textColor = '#ef4444'; }
+                                                    else if (l.status === 'Rejected by Admin' || l.status === 'Rejected') { displayText = 'Rejected by Admin'; textColor = '#dc2626'; }
+                                                    else if (l.status === 'Cancelled by Admin') { displayText = 'Cancelled by Admin'; textColor = '#64748b'; }
+                                                    else if (l.status === 'Cancelled') {
+                                                        const isEmp = (l.history || []).some(h => (h.remark && h.remark.toLowerCase().includes('employee')) || h.status === 'Rejected by Employee');
+                                                        if (isEmp) { displayText = 'Offer Rejected by You'; textColor = '#ef4444'; }
+                                                        else { displayText = 'Cancelled by Admin'; textColor = '#64748b'; }
+                                                    }
+                                                    else if (['Closed'].includes(l.status)) {
+                                                        const settlementRecords = (l.recoveryHistory || []).filter(r => r.overrideType === 'FullSettlement' || r.overrideType === 'PartialSettlement');
+                                                        const totalSettled = settlementRecords.reduce((sum, r) => sum + (r.amountDeducted || 0), 0);
+                                                        const lastSettlement = settlementRecords.length > 0 ? settlementRecords[settlementRecords.length - 1] : null;
+                                                        const lastDate = lastSettlement?.settlementDate ? new Date(lastSettlement.settlementDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+                                                        const isFullySettled = (l.recoveryHistory || []).some(r => r.overrideType === 'FullSettlement');
+                                                        displayText = isFullySettled ? '✅ Fully Settled' : '✅ Closed';
+                                                        textColor = '#059669';
+                                                    }
                                                     else {
                                                         const hasDeductions = l.outstandingAmount < l.totalRepayment;
                                                         if (!hasDeductions) { displayText = 'Not Started'; textColor = '#10b981'; }
                                                         else { displayText = 'In Progress'; textColor = '#3b82f6'; }
                                                     }
-                                                    return <span style={{ color: textColor, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 4 }}>{displayText}</span>;
+                                                    return (
+                                                        <div>
+                                                            <span style={{ color: textColor, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>{displayText}</span>
+                                                            {['Closed'].includes(l.status) && (() => {
+                                                                const settlementRecords = (l.recoveryHistory || []).filter(r => r.overrideType === 'FullSettlement' || r.overrideType === 'PartialSettlement');
+                                                                const totalSettled = settlementRecords.reduce((sum, r) => sum + (r.amountDeducted || 0), 0);
+                                                                const lastSettlement = settlementRecords.length > 0 ? settlementRecords[settlementRecords.length - 1] : null;
+                                                                const lastDate = lastSettlement?.settlementDate ? new Date(lastSettlement.settlementDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+                                                                return totalSettled > 0 ? (
+                                                                    <div style={{ marginTop: 4 }}>
+                                                                        <div style={{ fontSize: '11px', color: '#065f46', fontWeight: 600, background: '#d1fae5', borderRadius: 4, padding: '2px 6px', display: 'inline-block' }}>INR {totalSettled.toLocaleString('en-IN')} settled</div>
+                                                                        {lastDate && <div style={{ fontSize: '10px', color: '#6b7280', marginTop: 2 }}>on {lastDate}</div>}
+                                                                    </div>
+                                                                ) : null;
+                                                            })()}
+                                                        </div>
+                                                    );
                                                 })()}
                                             </td>
                                             <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -256,7 +388,20 @@ export default function MyLoansAndAdvances() {
                                                         <button className="btn btn-icon btn-secondary btn-sm" style={{ color: '#3b82f6' }} onClick={() => openLoanModal(l)} title="Edit"><HiOutlinePencil /></button>
                                                         <button className="btn btn-icon btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => deleteLoan(l._id)} title="Delete"><HiOutlineTrash /></button>
                                                     </div>
-                                                ) : <span style={{ color: '#cbd5e1', fontSize: '12px' }}>-</span>}
+                                                ) : l.status === 'Offered' ? (
+                                                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                                        <button className="btn btn-primary btn-sm" style={{ fontSize: '11px', padding: '5px 10px', background: '#10b981' }} onClick={async () => {
+                                                            const res = await Swal.fire({ title: 'Accept Loan Offer?', text: `EMI: ₹${l.emiAmount?.toLocaleString('en-IN')}/mo for ${l.repaymentTerms} months`, icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, Accept', confirmButtonColor: '#10b981' });
+                                                            if (res.isConfirmed) { await api.put(`/loans/${l._id}/status`, { status: 'Approved' }); toast.success('Offer accepted!'); fetchData(); }
+                                                        }}>✅ Accept</button>
+                                                        <button className="btn btn-secondary btn-sm" style={{ fontSize: '11px', padding: '5px 10px', color: '#ef4444' }} onClick={async () => {
+                                                            const res = await Swal.fire({ title: 'Reject Loan Offer?', text: 'Are you sure you want to reject this offer?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, Reject', confirmButtonColor: '#ef4444' });
+                                                            if (res.isConfirmed) { await api.put(`/loans/${l._id}/status`, { status: 'Cancelled' }); toast.info('Offer rejected'); fetchData(); }
+                                                        }}>❌ Reject</button>
+                                                    </div>
+                                                ) : (
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => handleViewLoanHistory(l)} style={{ color: '#6366f1', padding: '4px 12px', fontSize: '12px' }}>📜 View History</button>
+                                                )}
                                             </td>
                                         </tr>
                                     )
@@ -370,22 +515,20 @@ export default function MyLoansAndAdvances() {
                                         <input type="number" min="1" onKeyDown={e => (e.key === '-' || e.key === 'e') && e.preventDefault()} className="form-control" required value={loanForm.amount} onChange={e => setLoanForm({ ...loanForm, amount: e.target.value === '' ? '' : Number(e.target.value) })} />
                                     </div>
                                 </div>
+                                {/* Interest fields removed — Admin will set interest after approval */}
                                 <div className="form-row">
                                     <div className="form-group">
-                                        <label className="form-label">Interest Type</label>
-                                        <select className="form-control" value={loanForm.interestType} onChange={e => {
-                                            const val = e.target.value;
-                                            setLoanForm({ ...loanForm, interestType: val, interestRate: val === 'No Interest' ? 0 : loanForm.interestRate });
-                                        }}>
-                                            <option>No Interest</option><option>Flat Interest</option>
+                                        <label className="form-label">Payment Mode Requested</label>
+                                        <select className="form-control" required value={loanForm.preferredPaymentMethod} onChange={e => setLoanForm({ ...loanForm, preferredPaymentMethod: e.target.value })}>
+                                            <option value="Payroll System">Payroll System (With Salary)</option>
+                                            <option value="Cash">Cash</option>
+                                            <option value="Cheque">Cheque</option>
+                                            <option value="Bank Transfer">Direct Bank Transfer</option>
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Interest % (if Flat)</label>
-                                        <input type="number" min="0" onKeyDown={e => (e.key === '-' || e.key === 'e') && e.preventDefault()} className="form-control" disabled={loanForm.interestType === 'No Interest'} readOnly={loanForm.interestType === 'No Interest'} value={loanForm.interestType === 'No Interest' ? '' : loanForm.interestRate} onChange={e => {
-                                            if (loanForm.interestType === 'No Interest') return;
-                                            setLoanForm({ ...loanForm, interestRate: e.target.value === '' ? '' : Number(e.target.value) })
-                                        }} />
+                                        <label className="form-label">Repayment Tenure (Months)</label>
+                                        <input type="number" className="form-control" required min="1" max="120" onKeyDown={e => (e.key === '-' || e.key === 'e') && e.preventDefault()} value={loanForm.repaymentTerms} onChange={e => setLoanForm({ ...loanForm, repaymentTerms: e.target.value === '' ? '' : Number(e.target.value) })} />
                                     </div>
                                 </div>
                                 <div className="form-row">
@@ -400,7 +543,7 @@ export default function MyLoansAndAdvances() {
                                         <input type="number" min="2020" onKeyDown={e => (e.key === '-' || e.key === 'e') && e.preventDefault()} className="form-control" required value={loanForm.emiStartYear} onChange={e => setLoanForm({ ...loanForm, emiStartYear: e.target.value === '' ? '' : Number(e.target.value) })} />
                                     </div>
                                 </div>
-                                <div className="form-row">
+                                {loanForm.preferredPaymentMethod === 'Payroll System' && (
                                     <div className="form-group">
                                         <label className="form-label">Expected Payroll Month</label>
                                         <input type="month" className="form-control" required value={`${loanForm.expectedYear}-${String(loanForm.expectedMonth).padStart(2, '0')}`} onChange={e => {
@@ -410,11 +553,7 @@ export default function MyLoansAndAdvances() {
                                             }
                                         }} />
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Repayment Tenure (Months)</label>
-                                        <input type="number" className="form-control" required min="1" max="120" onKeyDown={e => (e.key === '-' || e.key === 'e') && e.preventDefault()} value={loanForm.repaymentTerms} onChange={e => setLoanForm({ ...loanForm, repaymentTerms: e.target.value === '' ? '' : Number(e.target.value) })} />
-                                    </div>
-                                </div>
+                                )}
                                 <div className="form-group">
                                     <label className="form-label">Reason</label>
                                     <textarea className="form-control" required value={loanForm.reason} onChange={e => setLoanForm({ ...loanForm, reason: e.target.value })} />

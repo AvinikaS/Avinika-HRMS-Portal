@@ -35,11 +35,33 @@ router.post('/signature', protect, (req, res) => {
 // Deletes a file from Cloudinary given its public_id
 router.delete('/file', protect, async (req, res) => {
     try {
-        const { publicId } = req.body;
+        const { publicId, resourceType } = req.body;
         if (!publicId) {
             return res.status(400).json({ success: false, message: 'publicId is required' });
         }
-        const result = await cloudinary.uploader.destroy(publicId);
+
+        const tryDestroy = async (id, type) => {
+            try {
+                const res = await cloudinary.uploader.destroy(id, { resource_type: type, invalidate: true });
+                return res;
+            } catch (e) {
+                return null;
+            }
+        };
+
+        let result;
+        if (resourceType) {
+            result = await tryDestroy(publicId, resourceType);
+        } else {
+            const types = ['image', 'raw', 'video'];
+            for (const type of types) {
+                result = await tryDestroy(publicId, type);
+                if (result && (result.result === 'ok' || result.result === 'not found')) {
+                    // Stop if destroyed or successfully checked
+                    if (result.result === 'ok') break;
+                }
+            }
+        }
         res.json({ success: true, data: result });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

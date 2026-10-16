@@ -11,7 +11,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(config => {
-    const token = sessionStorage.getItem('hrms_token');
+    const token = localStorage.getItem('hrms_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
     // Let browser auto-set Content-Type (with boundary) for FormData
     if (config.data instanceof FormData) {
@@ -28,8 +28,8 @@ api.interceptors.response.use(
             const isLoginRequest = err.config?.url?.includes('/auth/login');
             const isOnLoginPage = window.location.pathname === '/login';
             if (!isLoginRequest && !isOnLoginPage) {
-                sessionStorage.removeItem('hrms_token');
-                sessionStorage.removeItem('hrms_user');
+                localStorage.removeItem('hrms_token');
+                localStorage.removeItem('hrms_user');
                 window.location.href = '/login';
             }
         }

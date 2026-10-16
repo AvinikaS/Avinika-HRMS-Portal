@@ -137,6 +137,12 @@ exports.uploadProfileImage = async (req, res) => {
         user.profileImage = imageUrl;
         await user.save();
 
+        // Sync to Employee record as well
+        await Employee.findOneAndUpdate(
+            { $or: [{ userId: user._id }, { _id: user.employeeId }] },
+            { profileImage: imageUrl }
+        );
+
         res.json({ success: true, message: 'Profile image uploaded', profileImage: imageUrl });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -155,6 +161,12 @@ exports.deleteProfileImage = async (req, res) => {
             await deleteFromCloudinary(publicId);
             user.profileImage = null;
             await user.save();
+
+            // Sync to Employee record as well
+            await Employee.findOneAndUpdate(
+                { $or: [{ userId: user._id }, { _id: user.employeeId }] },
+                { profileImage: null }
+            );
         }
 
         res.json({ success: true, message: 'Profile image deleted' });

@@ -24,8 +24,10 @@ exports.getAttendanceStats = async (employeeId, month, year) => {
     const endDate = new Date(year, month, 0); // Last day of the month
     endDate.setHours(23, 59, 59, 999); // Include the ENTIRE last day (fixes timezone boundary bug)
 
+    const AttendanceRegularization = require('../models/AttendanceRegularization.model');
+
     // 1. Fetch data
-    const [attendanceRecords, leaves, holidays] = await Promise.all([
+    const [attendanceRecords, leaves, holidays, regularizationsWithArrears] = await Promise.all([
         Attendance.find({ employee: employeeId, date: { $gte: startDate, $lte: endDate } }),
         Leave.find({
             employee: employeeId, status: 'Approved', $or: [
@@ -38,8 +40,24 @@ exports.getAttendanceStats = async (employeeId, month, year) => {
             date: { $gte: startDate, $lte: endDate },
             isActive: true,
             type: { $in: ['Public', 'Government', 'Company'] }
-        })
+        }),
+        AttendanceRegularization.find({
+            employeeId,
+            attendanceDate: { $gte: startDate, $lte: endDate },
+            payrollAdjustmentCreated: true,
+            status: 'APPROVED'
+        }).populate('payrollAdjustmentId')
     ]);
+
+    // Build a Set of date strings (YYYY-MM-DD) that are paid via Arrear Adjustments in a future month
+    const arrearPaidDateSet = new Set();
+    regularizationsWithArrears.forEach(reg => {
+        const adj = reg.payrollAdjustmentId;
+        if (adj && !['CANCELLED', 'REJECTED'].includes(adj.status)) {
+            const dateStr = formatUTCDate(reg.attendanceDate);
+            arrearPaidDateSet.add(dateStr);
+        }
+    });
 
     let presentDays = 0;
     let explicitAbsentDays = 0;
@@ -51,6 +69,13 @@ exports.getAttendanceStats = async (employeeId, month, year) => {
     attendanceRecords.forEach(record => {
         const recDateStr = formatUTCDate(record.date);
         attendanceDateSet.add(recDateStr);
+
+        // If this day's attendance regularization was converted into an Arrear Adjustment for a future month,
+        // do NOT count it as Present in THIS month's base payroll stats (it is paid as an Arrear in next month's payroll)
+        if (arrearPaidDateSet.has(recDateStr)) {
+            explicitAbsentDays++;
+            return;
+        }
 
         // If this day is a holiday, ignore the "Absent" record — it's a paid off-day
         if (holidayDates.has(recDateStr) && record.status === 'Absent') {

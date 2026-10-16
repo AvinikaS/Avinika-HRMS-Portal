@@ -14,7 +14,7 @@ const loanSchema = new mongoose.Schema({
     repaymentTerms: { type: Number, required: true }, // in months
 
     // Interest
-    interestType: { type: String, enum: ['No Interest', 'Flat Interest'], default: 'No Interest' },
+    interestType: { type: String, enum: ['No Interest', 'Flat Interest', 'Reducing Balance'], default: 'No Interest' },
     interestRate: { type: Number, default: 0 },
 
     // Auto-calculated totals
@@ -24,13 +24,17 @@ const loanSchema = new mongoose.Schema({
 
     // Metadata
     reason: { type: String },
+    rejectionReason: { type: String },
     documentUrl: { type: String },
-    disbursalMode: { type: String, enum: ['Payroll System', 'Outside Payroll', 'Cash', 'Bank Transfer'] },
+    preferredPaymentMethod: { type: String, enum: ['Cash', 'Cheque', 'Payroll System', 'Bank Transfer'], default: 'Payroll System' },
+    disbursalMode: { type: String, enum: ['Payroll System', 'Outside Payroll', 'Cash', 'Cheque', 'Bank Transfer'] },
+    disbursalPayrollMonth: { type: Number },
+    disbursalPayrollYear: { type: Number },
 
     // Status Flow
     status: {
         type: String,
-        enum: ['Pending', 'Approved', 'Rejected', 'Disbursed', 'In Progress', 'Closed', 'Cancelled'],
+        enum: ['Pending', 'Offered', 'Approved', 'Rejected', 'Rejected by Admin', 'Rejected by Employee', 'Disbursed', 'In Progress', 'Closed', 'Cancelled', 'Cancelled by Admin'],
         default: 'Pending'
     },
 

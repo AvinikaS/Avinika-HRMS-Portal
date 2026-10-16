@@ -1,5 +1,6 @@
 const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
+const AttendanceVerificationLog = require('../models/AttendanceVerificationLog.model');
 const { haversineDistance } = require('../utils/geoUtils');
 const { compareFaces } = require('../utils/faceMatch');
 const path = require('path');
@@ -17,8 +18,7 @@ exports.checkIn = async (req, res) => {
         const allowedRadius = parseInt(process.env.ALLOWED_RADIUS) || 500;
 
         const { latitude, longitude, selfie, livenessStatus } = req.body || {};
-        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
 
         // 1. Basic Validation
         if (latitude === undefined || latitude === null || longitude === undefined || longitude === null) {
@@ -66,6 +66,24 @@ exports.checkIn = async (req, res) => {
 
         if (matchScore < 80) {
             if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+
+            // Log failed face match attempt
+            await AttendanceVerificationLog.create({
+                employeeId: req.user.employeeId,
+                date: today,
+                attemptTime: new Date(),
+                step: 'FACE_VERIFICATION_FAILED',
+                latitude,
+                longitude,
+                distance: Math.round(distance),
+                allowedRadius,
+                isLocationAllowed: true,
+                livenessStatus: livenessStatus || 'Passed',
+                faceMatchScore: matchScore,
+                ipAddress,
+                statusMessage: `Face verification failed (${matchScore}% match score)`
+            });
+
             return res.status(400).json({ success: false, message: 'Face verification failed', matchScore });
         }
 
@@ -109,6 +127,23 @@ exports.checkIn = async (req, res) => {
             await att.save();
         }
 
+        // Log successful check-in attempt
+        await AttendanceVerificationLog.create({
+            employeeId: req.user.employeeId,
+            date: today,
+            attemptTime: new Date(),
+            step: 'CHECKIN_SUCCESSFUL',
+            latitude,
+            longitude,
+            distance: Math.round(distance),
+            allowedRadius,
+            isLocationAllowed: true,
+            livenessStatus: livenessStatus || 'Passed',
+            faceMatchScore: matchScore,
+            ipAddress,
+            statusMessage: 'Check-in completed successfully'
+        });
+
         res.json({ success: true, data: att, message: 'Checked in successfully' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -128,7 +163,29 @@ exports.verifyLocation = async (req, res) => {
         }
 
         const distance = haversineDistance(latitude, longitude, officeLat, officeLon);
-        if (distance > allowedRadius) {
+        const isAllowed = distance <= allowedRadius;
+
+        // Log location verification attempt in AttendanceVerificationLog if user logged in
+        if (req.user && req.user.employeeId) {
+            const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+            const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
+            await AttendanceVerificationLog.create({
+                employeeId: req.user.employeeId,
+                date: today,
+                attemptTime: new Date(),
+                step: isAllowed ? 'LOCATION_VERIFIED' : 'ATTEMPT_ABANDONED',
+                latitude,
+                longitude,
+                distance: Math.round(distance),
+                allowedRadius,
+                isLocationAllowed: isAllowed,
+                livenessStatus: 'Incomplete',
+                ipAddress,
+                statusMessage: isAllowed ? `GPS Verified (${Math.round(distance)}m from office)` : `Outside location (${Math.round(distance)}m from office)`
+            });
+        }
+
+        if (!isAllowed) {
             return res.status(403).json({
                 success: false,
                 message: 'You are outside office location',
@@ -178,6 +235,46 @@ exports.getMyAttendance = async (req, res) => {
         // 1. Fetch actual attendance records
         let records = await Attendance.find(query).sort({ date: -1 });
         records = records.map(r => r.toObject()); // Convert to plain objects
+
+        // Check for regularizations paid via Arrear Adjustment in future month
+        const AttendanceRegularization = require('../models/AttendanceRegularization.model');
+        const regularizationsWithArrears = await AttendanceRegularization.find({
+            employeeId: req.user.employeeId,
+            status: 'APPROVED',
+            payrollAdjustmentCreated: true
+        }).populate('payrollAdjustmentId');
+
+        const arrearPaidDates = new Set();
+        regularizationsWithArrears.forEach(reg => {
+            const adj = reg.payrollAdjustmentId;
+            if (adj && !['CANCELLED', 'REJECTED'].includes(adj.status)) {
+                const d = new Date(reg.attendanceDate).toISOString().split('T')[0];
+                arrearPaidDates.add(d);
+            }
+        });
+
+        records = records.map(r => {
+            const rDateStr = new Date(r.date).toISOString().split('T')[0];
+            if (arrearPaidDates.has(rDateStr)) {
+                return {
+                    ...r,
+                    status: 'Absent',
+                    checkIn: null,
+                    checkOut: null,
+                    totalHours: 0,
+                    notes: (r.notes ? r.notes + ' | ' : '') + 'Paid via Payroll Arrear Adjustment'
+                };
+            }
+            if (r.status === 'Absent') {
+                return {
+                    ...r,
+                    checkIn: null,
+                    checkOut: null,
+                    totalHours: 0
+                };
+            }
+            return r;
+        });
 
         // 2. Fetch approved leaves if month/year provided
         if (month && year) {
@@ -243,6 +340,45 @@ exports.getEmployeeAttendance = async (req, res) => {
 
         let records = await Attendance.find(query).sort({ date: -1 });
         records = records.map(r => r.toObject());
+
+        const AttendanceRegularization = require('../models/AttendanceRegularization.model');
+        const regularizationsWithArrears = await AttendanceRegularization.find({
+            employeeId,
+            status: 'APPROVED',
+            payrollAdjustmentCreated: true
+        }).populate('payrollAdjustmentId');
+
+        const arrearPaidDates = new Set();
+        regularizationsWithArrears.forEach(reg => {
+            const adj = reg.payrollAdjustmentId;
+            if (adj && !['CANCELLED', 'REJECTED'].includes(adj.status)) {
+                const d = new Date(reg.attendanceDate).toISOString().split('T')[0];
+                arrearPaidDates.add(d);
+            }
+        });
+
+        records = records.map(r => {
+            const rDateStr = new Date(r.date).toISOString().split('T')[0];
+            if (arrearPaidDates.has(rDateStr)) {
+                return {
+                    ...r,
+                    status: 'Absent',
+                    checkIn: null,
+                    checkOut: null,
+                    totalHours: 0,
+                    notes: (r.notes ? r.notes + ' | ' : '') + 'Paid via Payroll Arrear Adjustment'
+                };
+            }
+            if (r.status === 'Absent') {
+                return {
+                    ...r,
+                    checkIn: null,
+                    checkOut: null,
+                    totalHours: 0
+                };
+            }
+            return r;
+        });
 
         const Leave = require('../models/Leave');
         const approvedLeaves = await Leave.find({
@@ -355,6 +491,43 @@ exports.getAllAttendance = async (req, res) => {
         let records = await Attendance.find(query)
             .populate('employee', 'firstName lastName employeeCode department designation profileImage')
             .sort({ date: -1 });
+
+        // Check for regularizations paid via Arrear Adjustment in future month
+        const AttendanceRegularization = require('../models/AttendanceRegularization.model');
+        const regularizationsWithArrears = await AttendanceRegularization.find({
+            status: 'APPROVED',
+            payrollAdjustmentCreated: true
+        }).populate('payrollAdjustmentId');
+
+        const arrearPaidMap = new Map();
+        regularizationsWithArrears.forEach(reg => {
+            const adj = reg.payrollAdjustmentId;
+            if (adj && !['CANCELLED', 'REJECTED'].includes(adj.status)) {
+                const dateStr = new Date(reg.attendanceDate).toISOString().split('T')[0];
+                const key = `${reg.employeeId.toString()}_${dateStr}`;
+                arrearPaidMap.set(key, true);
+            }
+        });
+
+        records = records.map(r => {
+            const rObj = r.toObject ? r.toObject() : r;
+            if (rObj.employee) {
+                const empIdStr = rObj.employee._id ? rObj.employee._id.toString() : rObj.employee.toString();
+                const rDateStr = new Date(rObj.date).toISOString().split('T')[0];
+                const key = `${empIdStr}_${rDateStr}`;
+                if (arrearPaidMap.has(key)) {
+                    return {
+                        ...rObj,
+                        status: 'Absent',
+                        checkIn: null,
+                        checkOut: null,
+                        totalHours: 0,
+                        notes: (rObj.notes ? rObj.notes + ' | ' : '') + 'Paid via Payroll Arrear Adjustment'
+                    };
+                }
+            }
+            return rObj;
+        });
 
         // If it's for a specific date, also check for leaves
         if (date) {

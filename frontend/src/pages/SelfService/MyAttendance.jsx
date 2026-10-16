@@ -150,9 +150,9 @@ export default function MyAttendance() {
                                     {records.map(r => (
                                         <tr key={r._id}>
                                             <td style={{ fontWeight: 600 }}>{new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' })}</td>
-                                            <td>{formatTime(r.checkIn)}</td>
-                                            <td>{formatTime(r.checkOut)}</td>
-                                            <td>{r.totalHours ? `${r.totalHours}h` : '-'}</td>
+                                            <td>{r.status === 'Absent' ? '-' : formatTime(r.checkIn)}</td>
+                                            <td>{r.status === 'Absent' ? '-' : formatTime(r.checkOut)}</td>
+                                            <td>{r.status === 'Absent' ? '-' : (r.totalHours ? `${r.totalHours}h` : '-')}</td>
                                             <td>{statusBadge(r.status)}</td>
                                         </tr>
                                     ))}

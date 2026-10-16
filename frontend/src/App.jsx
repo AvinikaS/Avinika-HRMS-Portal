@@ -55,6 +55,17 @@ import SuperAdminExpenseAll from './pages/expense/admin/SuperAdminExpenseAll';
 import SuperAdminExpenseDetail from './pages/expense/admin/SuperAdminExpenseDetail';
 import ExpenseCategories from './pages/expense/admin/ExpenseCategories';
 
+// Attendance Regularization & Payroll Adjustment Sub-systems
+import MyAttendanceRegularization from './pages/SelfService/MyAttendanceRegularization';
+import CreateRegularization from './pages/SelfService/CreateRegularization';
+import RegularizationDetail from './pages/SelfService/RegularizationDetail';
+import HRAdminRegularizations from './pages/payroll/HRAdminRegularizations';
+import HRAdminRegularizationDetail from './pages/payroll/HRAdminRegularizationDetail';
+import HRAdminPayrollAdjustments from './pages/payroll/HRAdminPayrollAdjustments';
+import SuperAdminRegularizations from './pages/payroll/SuperAdminRegularizations';
+import SuperAdminPayrollAdjustments from './pages/payroll/SuperAdminPayrollAdjustments';
+import SuperAdminAttendanceAudit from './pages/payroll/SuperAdminAttendanceAudit';
+
 // Self-Service
 import MyAttendance from './pages/SelfService/MyAttendance';
 import MyLeaves from './pages/SelfService/MyLeaves';
@@ -114,6 +125,14 @@ const pageTitles = {
     '/superadmin/expenses/pending': 'Pending Approvals',
     '/superadmin/expenses/all': 'All Expense Claims',
     '/superadmin/expenses/categories': 'Expense Categories',
+    // Attendance Regularization & Payroll Adjustment
+    '/my-regularizations': 'Attendance Regularization',
+    '/my-regularizations/create': 'New Regularization Request',
+    '/hradmin/attendance/regularization': 'Attendance Regularization Management',
+    '/hradmin/payroll-adjustments': 'Payroll Adjustments',
+    '/superadmin/attendance/regularization': 'SuperAdmin Regularizations',
+    '/superadmin/payroll-adjustments': 'SuperAdmin Adjustment Approvals',
+    '/superadmin/attendance-audit': 'Attendance Audit Trail',
 };
 
 function AppLayout() {
@@ -152,6 +171,13 @@ function AppLayout() {
                                 <Route path="/documents" element={<Documents />} />
                                 <Route path="/document-approvals" element={<DocumentApprovals />} />
                                 <Route path="/holidays" element={<Holidays />} />
+                                {/* Attendance Regularization & Payroll Adjustments (HR Admin / Super Admin) */}
+                                <Route path="/hradmin/attendance/regularization" element={<HRAdminRegularizations />} />
+                                <Route path="/hradmin/attendance/regularization/:id" element={<HRAdminRegularizationDetail />} />
+                                <Route path="/hradmin/payroll-adjustments" element={<HRAdminPayrollAdjustments />} />
+                                <Route path="/superadmin/attendance/regularization" element={<SuperAdminRegularizations />} />
+                                <Route path="/superadmin/payroll-adjustments" element={<SuperAdminPayrollAdjustments />} />
+                                <Route path="/superadmin/attendance-audit" element={<SuperAdminAttendanceAudit />} />
                                 {/* Admin Helpdesk */}
                                 <Route path="/admin/helpdesk" element={<AdminHelpdeskDashboard />} />
                                 <Route path="/admin/helpdesk/tickets" element={<AdminAllTickets />} />
@@ -170,6 +196,9 @@ function AppLayout() {
 
                         {/* Self-Service Routes (available to all) */}
                         <Route path={isAdmin || isManager ? '/my-attendance' : '/my-attendance'} element={<MyAttendance />} />
+                        <Route path="/my-regularizations" element={<MyAttendanceRegularization />} />
+                        <Route path="/my-regularizations/create" element={<CreateRegularization />} />
+                        <Route path="/my-regularizations/:id" element={<RegularizationDetail />} />
                         <Route path="/my-leaves" element={<MyLeaves />} />
                         <Route path="/my-payslips" element={<MyPayslips />} />
                         <Route path="/my-profile" element={<MyProfile />} />

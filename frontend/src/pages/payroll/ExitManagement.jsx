@@ -488,6 +488,112 @@ export default function ExitManagement() {
 
     const fmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
+    const handleViewExitHistory = (ex) => {
+        const d = ex.exitRequestDetails;
+        const ff = ex.ffSettlement;
+        const cl = ex.clearanceChecklist || {};
+
+        const fd = (date) => date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+        const fmtAmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+        const clItems = [
+            { label: 'IT Assets Returned', val: cl.itAssetsReturned },
+            { label: 'ID Card Returned', val: cl.idCardReturned },
+            { label: 'Access Card Returned', val: cl.accessCardReturned },
+            { label: 'Knowledge Transfer', val: cl.knowledgeTransfer },
+            { label: 'Email Handover Done', val: cl.emailHandoverDone },
+            { label: 'Leaves Settled', val: cl.leavesSettled },
+            { label: 'Finance Clearance', val: cl.financeCleared },
+            { label: 'IT Admin Clearance', val: cl.itAdminClearance },
+        ];
+        const clHtml = clItems.map(i => `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;"><span>${i.label}</span><span style="font-weight:700;color:${i.val ? '#15803d' : '#b91c1c'};">${i.val ? '✅ Done' : '❌ Pending'}</span></div>`).join('');
+
+        const ffHtml = ff ? `
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:14px;">
+                <div style="font-weight:700;color:#15803d;margin-bottom:8px;font-size:13px;">💰 F&F Settlement Details</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;">
+                    <div style="color:#334155;">Pending Salary</div><div style="font-weight:600;text-align:right;">${fmtAmt(ff.pendingSalary)}</div>
+                    <div style="color:#334155;">Leave Encashment</div><div style="font-weight:600;text-align:right;">${fmtAmt(ff.leaveEncashment)}</div>
+                    <div style="color:#334155;">Gratuity Amount</div><div style="font-weight:600;text-align:right;">${fmtAmt(ff.gratuityAmount)}</div>
+                    <div style="color:#334155;">Other Earnings</div><div style="font-weight:600;text-align:right;">${fmtAmt(ff.otherEarnings)}</div>
+                    <div style="color:#334155;border-top:1px solid #d1fae5;padding-top:4px;">Notice Period Recovery</div><div style="font-weight:600;text-align:right;color:#dc2626;border-top:1px solid #d1fae5;padding-top:4px;">- ${fmtAmt(ff.noticePeriodRecovery)}</div>
+                    <div style="color:#334155;">Loan Recovery</div><div style="font-weight:600;text-align:right;color:#dc2626;">- ${fmtAmt(ff.loanRecovery)}</div>
+                    <div style="color:#334155;">Advance Recovery</div><div style="font-weight:600;text-align:right;color:#dc2626;">- ${fmtAmt(ff.advanceRecovery)}</div>
+                    <div style="color:#334155;">Other Deductions</div><div style="font-weight:600;text-align:right;color:#dc2626;">- ${fmtAmt(ff.otherDeductions)}</div>
+                </div>
+                <div style="border-top:2px solid #15803d;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:700;font-size:13px;color:#14532d;">NET F&F PAYABLE</span>
+                    <span style="font-weight:800;font-size:16px;color:#15803d;">${fmtAmt(ff.netFFPayable)}</span>
+                </div>
+                <div style="margin-top:8px;font-size:11px;color:#64748b;">
+                    Payment Status: <b style="color:${ff.paymentStatus === 'paid' ? '#15803d' : ff.paymentStatus === 'processed' ? '#b45309' : '#dc2626'};">${(ff.paymentStatus || 'Pending').toUpperCase()}</b>
+                    ${ff.paymentMode ? ` | Mode: <b>${ff.paymentMode}</b>` : ''}
+                    ${ff.transactionReference ? ` | Ref: <b>${ff.transactionReference}</b>` : ''}
+                    ${ff.paymentDate ? ` | Date: <b>${fd(ff.paymentDate)}</b>` : ''}
+                </div>
+            </div>
+        ` : '<div style="color:#94a3b8;font-size:12px;font-style:italic;margin-bottom:14px;">F&F settlement not yet processed.</div>';
+
+        const statusColor = { 'Pending': '#d97706', 'Checklist Pending': '#0369a1', 'F&F Pending': '#7c3aed', 'Completed': '#15803d', 'Rejected': '#dc2626' };
+
+        Swal.fire({
+            title: `Exit History — ${ex.employee?.firstName} ${ex.employee?.lastName}`,
+            width: '680px',
+            html: `
+                <div style="text-align:left;font-size:13px;max-height:520px;overflow-y:auto;padding-right:4px;">
+                    <!-- Header Info -->
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div>
+                            <div style="font-weight:700;color:#1e293b;font-size:15px;">${ex.employee?.firstName} ${ex.employee?.lastName}</div>
+                            <div style="color:#64748b;font-size:12px;">${ex.employee?.employeeCode} | Exit Reason: <b style="text-transform:capitalize;">${(ex.reason || '').replace(/_/g, ' ')}</b></div>
+                        </div>
+                        <span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;background:${ex.status === 'Completed' ? '#d1fae5' : ex.status === 'Rejected' ? '#fee2e2' : '#f1f5f9'};color:${statusColor[ex.status] || '#334155'};">${ex.status}</span>
+                    </div>
+
+                    <!-- Stage 1: Resignation -->
+                    <div style="margin-bottom:14px;padding-left:12px;border-left:3px solid #6366f1;">
+                        <div style="font-weight:700;color:#4338ca;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">📋 Stage 1: Exit Request</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px;">
+                            <div style="color:#64748b;">Resignation Date</div><div style="font-weight:600;">${fd(ex.resignationDate)}</div>
+                            <div style="color:#64748b;">Expected LWD</div><div style="font-weight:600;">${fd(ex.expectedLastWorkingDay)}</div>
+                            <div style="color:#64748b;">Notice Period Required</div><div style="font-weight:600;">${d?.noticePeriodRequired || 30} Days</div>
+                            <div style="color:#64748b;">Notice Period Served</div><div style="font-weight:600;">${d?.noticePeriodServed ?? 0} Days</div>
+                            <div style="color:#64748b;">Initiated By</div><div style="font-weight:600;text-transform:capitalize;">${(d?.initiatedBy || 'employee')}</div>
+                            <div style="color:#64748b;">DOJ</div><div style="font-weight:600;">${fd(ex.employee?.dateOfJoining)}</div>
+                        </div>
+                        ${d?.remarks ? `<div style="margin-top:6px;background:#f1f5f9;border-radius:6px;padding:8px;font-size:12px;color:#475569;"><b>Remarks / Resignation Letter:</b><br/>${d.remarks}</div>` : ''}
+                        ${d?.rejectionReason ? `<div style="margin-top:6px;background:#fff5f5;border:1px solid #fecaca;border-radius:6px;padding:8px;font-size:12px;color:#991b1b;"><b>Rejection Reason:</b><br/>${d.rejectionReason}</div>` : ''}
+                    </div>
+
+                    <!-- Stage 2: Clearance Checklist -->
+                    <div style="margin-bottom:14px;padding-left:12px;border-left:3px solid #0ea5e9;">
+                        <div style="font-weight:700;color:#0369a1;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">✅ Stage 2: Clearance Checklist</div>
+                        ${clHtml}
+                    </div>
+
+                    <!-- Stage 3: F&F Settlement -->
+                    <div style="margin-bottom:14px;padding-left:12px;border-left:3px solid #10b981;">
+                        <div style="font-weight:700;color:#059669;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">💰 Stage 3: F&F Settlement</div>
+                        ${ffHtml}
+                    </div>
+
+                    <!-- Timeline Summary -->
+                    <div style="padding-left:12px;border-left:3px solid #f59e0b;">
+                        <div style="font-weight:700;color:#b45309;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">📅 Timeline</div>
+                        <div style="font-size:12px;color:#334155;">
+                            <div>Request Filed: <b>${fd(d?.createdAt || ex.resignationDate)}</b></div>
+                            ${ff?.approvedOn ? `<div>F&F Approved: <b>${fd(ff.approvedOn)}</b></div>` : ''}
+                            ${ff?.paymentDate ? `<div>Payment Date: <b>${fd(ff.paymentDate)}</b></div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `,
+            confirmButtonText: 'Close',
+            confirmButtonColor: '#6366f1'
+        });
+    };
+
+
     return (
         <div className="animate-fadeIn" style={{ paddingBottom: 50 }}>
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
@@ -811,6 +917,13 @@ export default function ExitManagement() {
                                                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                                                                     <button
                                                                         className="btn btn-sm btn-secondary"
+                                                                        style={{ color: '#6366f1', fontWeight: 600 }}
+                                                                        onClick={() => handleViewExitHistory(ex)}
+                                                                    >
+                                                                        📋 History
+                                                                    </button>
+                                                                    <button
+                                                                        className="btn btn-sm btn-secondary"
                                                                         style={{ color: '#ef4444', fontWeight: 600 }}
                                                                         onClick={() => {
                                                                             Swal.fire({
@@ -832,7 +945,14 @@ export default function ExitManagement() {
                                                                     </button>
                                                                 </div>
                                                             ) : (
-                                                                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                                                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                                                    <button
+                                                                        className="btn btn-sm btn-secondary"
+                                                                        style={{ color: '#6366f1', fontWeight: 600 }}
+                                                                        onClick={() => handleViewExitHistory(ex)}
+                                                                    >
+                                                                        📋 History
+                                                                    </button>
                                                                     <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=ff_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="F&F Letter"><HiOutlineDocumentDownload /> F&F</a>
                                                                     <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=experience_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Experience Letter">Exp</a>
                                                                     <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=relieving_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Relieving Letter">Rel</a>

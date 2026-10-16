@@ -149,10 +149,11 @@ exports.rejectLeave = async (req, res) => {
 
         try {
             const notificationHelper = require('../utils/notificationHelper');
+            const reasonText = req.body.comments ? ` Reason: ${req.body.comments}` : '';
             await notificationHelper.createNotificationForEmployee({
                 employeeId: leave.employee,
                 title: 'Leave Request Rejected',
-                message: `Your request for ${leave.totalDays} day(s) of ${leave.leaveType} leave starting ${new Date(leave.startDate).toLocaleDateString('en-IN')} has been rejected.`,
+                message: `Your request for ${leave.totalDays} day(s) of ${leave.leaveType} leave starting ${new Date(leave.startDate).toLocaleDateString('en-IN')} has been rejected.${reasonText}`,
                 type: 'error',
                 link: '/my-leaves'
             });
@@ -165,6 +166,7 @@ exports.rejectLeave = async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 };
+
 
 // GET /api/leaves/all  (Admin)
 exports.getAllLeaves = async (req, res) => {

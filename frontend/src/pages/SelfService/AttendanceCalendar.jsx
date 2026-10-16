@@ -80,7 +80,10 @@ export default function AttendanceCalendar({ month, year, records, holidays = []
                             {day && (
                                 <>
                                     <span className="day-num">{day}</span>
-                                    {status && <div className="status-dot"></div>}
+                                    {/* Attendance status dot — har box ke niche ek chhoti bindi dikhata tha
+                                        (status ke hisaab se color badlti thi: green=present, red=absent, etc.)
+                                        Filhaal hata di hai — enable karne ke liye niche wali line uncomment karo: */}
+                                    {/* {status && <div className="status-dot"></div>} */}
                                 </>
                             )}
                         </div>

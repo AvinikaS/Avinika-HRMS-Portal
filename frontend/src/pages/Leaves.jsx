@@ -44,12 +44,39 @@ export default function Leaves() {
     useEffect(() => { fetchYears(); }, []);
     useEffect(() => { setLoading(true); fetchLeaves(); }, [tab, month, year]);
 
-    const handleAction = async (id, action) => {
+    const handleAction = async (id, action, reasonText = '') => {
         try {
-            await api.put(`/leaves/${id}/${action}`);
+            await api.put(`/leaves/${id}/${action}`, { comments: reasonText });
             fetchLeaves();
         } catch { }
     };
+
+    const handleReject = async (id) => {
+        const { value: reason, isConfirmed } = await Swal.fire({
+            title: 'Reject Leave Request',
+            html: `
+                <div style="text-align:left;font-size:13px;">
+                    <label style="font-weight:600;display:block;margin-bottom:6px;">Reason for Rejection <span style="color:#ef4444;">*</span></label>
+                    <textarea id="swal-reject-reason" class="swal2-textarea" placeholder="Enter reason for rejecting this leave request..." style="width:100%;margin:0;box-sizing:border-box;font-size:13px;height:90px;"></textarea>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Reject Leave',
+            confirmButtonColor: '#ef4444',
+            cancelButtonText: 'Cancel',
+            preConfirm: () => {
+                const val = document.getElementById('swal-reject-reason')?.value?.trim();
+                if (!val) {
+                    Swal.showValidationMessage('Please enter a reason for rejection');
+                    return false;
+                }
+                return val;
+            }
+        });
+        if (!isConfirmed || !reason) return;
+        await handleAction(id, 'reject', reason);
+    };
+
 
     const typeBadge = (t) => {
         const map = { Casual: 'badge-info', Sick: 'badge-danger', Earned: 'badge-success', Unpaid: 'badge-neutral', Maternity: 'badge-primary', Paternity: 'badge-primary', Other: 'badge-primary' };
@@ -246,13 +273,44 @@ export default function Leaves() {
                                         <td>{formatDate(l.startDate)}</td>
                                         <td>{formatDate(l.endDate)}</td>
                                         <td style={{ fontWeight: 700 }}>{l.totalDays}</td>
-                                        <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.reason}</td>
-                                        <td>{statusBadge(l.status)}</td>
+                                        <td style={{ maxWidth: 200 }}>
+                                            {l.reason ? (
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    style={{ fontSize: '11px', padding: '3px 10px', color: '#4f46e5', fontWeight: 600 }}
+                                                    onClick={() => Swal.fire({
+                                                        title: 'Leave Reason',
+                                                        html: `<div style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;font-size:13px;color:#334155;line-height:1.6;">${l.reason.replace(/\n/g, '<br/>')}</div>`,
+                                                        confirmButtonText: 'Close'
+                                                    })}
+                                                >
+                                                    View
+                                                </button>
+                                            ) : <span style={{ color: '#cbd5e1' }}>-</span>}
+                                        </td>
+                                        <td>
+                                            {statusBadge(l.status)}
+                                            {l.status === 'Rejected' && l.approverComments && (
+                                                <div style={{ marginTop: 4 }}>
+                                                    <button
+                                                        className="btn btn-secondary btn-sm"
+                                                        style={{ fontSize: '10px', padding: '2px 8px', color: '#dc2626', fontWeight: 600 }}
+                                                        onClick={() => Swal.fire({
+                                                            title: 'Rejection Reason',
+                                                            html: `<div style="text-align:left;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:14px;font-size:13px;color:#991b1b;line-height:1.6;">${l.approverComments.replace(/\n/g, '<br/>')}</div>`,
+                                                            confirmButtonText: 'Close'
+                                                        })}
+                                                    >
+                                                        View Reason
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
                                         {tab === 'pending' && (
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
                                                     <button className="btn btn-sm btn-success" onClick={() => handleAction(l._id, 'approve')}><HiOutlineCheck /> Approve</button>
-                                                    <button className="btn btn-sm btn-danger" onClick={() => handleAction(l._id, 'reject')}><HiOutlineX /> Reject</button>
+                                                    <button className="btn btn-sm btn-danger" onClick={() => handleReject(l._id)}><HiOutlineX /> Reject</button>
                                                 </div>
                                             </td>
                                         )}

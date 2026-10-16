@@ -1488,6 +1488,10 @@ table tr:last-child td {
     margin-left: 0 !important;
   }
 
+  .page-content {
+    padding: 14px 16px;
+  }
+
   .topbar {
     left: 0 !important;
     padding: 0 16px;
@@ -1710,6 +1714,10 @@ table tr:last-child td {
 
 /* ----- Small Tablet / Large Phone (600px) ----- */
 @media (max-width: 600px) {
+  .page-content {
+    padding: 10px 12px;
+  }
+
   .stat-grid {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
@@ -1744,8 +1752,17 @@ table tr:last-child td {
     padding: 0 12px;
   }
 
+  .topbar-left {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
   .topbar-left h1 {
     font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .topbar-btn {
@@ -1867,12 +1884,23 @@ table tr:last-child td {
     padding: 0 10px;
   }
 
+  .topbar-left {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    gap: 8px;
+  }
+
   .topbar-left h1 {
     font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .topbar-right {
     gap: 6px;
+    flex-shrink: 0;
   }
 
   /* Buttons full-width where applicable */

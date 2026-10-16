@@ -51,7 +51,7 @@ router.post('/:id/hradmin/correction', hrOnly, hrAdminRequestCorrection);
 // ========================
 // SUPER ADMIN ROUTES (MUST come before /:id)
 // ========================
-const superOnly = authorize('SuperAdmin');
+const superOnly = authorize('HRAdmin', 'SuperAdmin');
 
 router.get('/superadmin/dashboard', superOnly, superAdminDashboard);
 router.get('/superadmin/pending', superOnly, superAdminGetPending);

@@ -154,6 +154,14 @@ exports.generatePayslipPDF = (payroll, res, companyInfo = {}) => {
         { label: 'Expense Reimbursement', val: payroll.earnings.expenseReimbursement || 0 }
     ].filter(i => i.val > 0 || i.label === 'Basic Salary' || i.label === 'HRA' || i.label.includes('Allowance'));
 
+    if (payroll.adjustments && payroll.adjustments.length > 0) {
+        payroll.adjustments.filter(a => a.direction === 'CREDIT').forEach(adj => {
+            earnItems.push({ label: adj.label || 'Attendance Arrear', val: adj.amount });
+        });
+    } else if (payroll.earnings?.arrears > 0) {
+        earnItems.push({ label: 'Attendance Arrear', val: payroll.earnings.arrears });
+    }
+
     const dedItems = [
         { label: payroll.pfDetails?.calculationType === 'pf_ceiling' ? 'Provident Fund (PF Ceiling 15K)' : 'Provident Fund (PF)', val: payroll.deductions.pf },
         { label: 'INCOME TAX (TDS)', val: payroll.deductions.tax },
@@ -162,6 +170,12 @@ exports.generatePayslipPDF = (payroll, res, companyInfo = {}) => {
         { label: 'Loan EMI Recovery', val: payroll.deductions.loanEmi || 0 },
         { label: 'Advance Recovery', val: payroll.deductions.advanceRecovery || 0 }
     ].filter(i => i.val > 0);
+
+    if (payroll.adjustments && payroll.adjustments.length > 0) {
+        payroll.adjustments.filter(a => a.direction === 'DEBIT').forEach(adj => {
+            dedItems.push({ label: adj.label || 'Payroll Deduction Adjustment', val: adj.amount });
+        });
+    }
 
     const maxRows = Math.max(earnItems.length, dedItems.length);
 

@@ -160,12 +160,12 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
 
     return (
         <header className={`topbar ${collapsed ? 'collapsed' : ''}`}>
-            <div className="topbar-left">
-                <button className="topbar-btn" style={{ display: 'none' }} id="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
+            <div className="topbar-left" style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                <button className="topbar-btn" style={{ display: 'none', flexShrink: 0 }} id="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
                     <HiOutlineMenu />
                 </button>
                 <style>{`@media(max-width:768px){#mobile-menu-btn{display:flex!important}}`}</style>
-                <h1>{title}</h1>
+                <h1 title={title} style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</h1>
             </div>
             <div className="topbar-right">
                 <div className="notif-container" style={{ position: 'relative' }}>

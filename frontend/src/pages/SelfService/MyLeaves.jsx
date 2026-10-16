@@ -1,3 +1,4 @@
+import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
@@ -200,8 +201,39 @@ export default function MyLeaves() {
                                             <td>{formatDate(l.startDate)}</td>
                                             <td>{formatDate(l.endDate)}</td>
                                             <td style={{ fontWeight: 700 }}>{l.totalDays}</td>
-                                            <td>{l.reason}</td>
-                                            <td>{statusBadge(l.status)}</td>
+                                            <td>
+                                                {l.reason ? (
+                                                    <button
+                                                        className="btn btn-secondary btn-sm"
+                                                        style={{ fontSize: '11px', padding: '3px 10px', color: '#4f46e5', fontWeight: 600 }}
+                                                        onClick={() => Swal.fire({
+                                                            title: 'Leave Reason',
+                                                            html: `<div style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;font-size:13px;color:#334155;line-height:1.6;">${l.reason.replace(/\n/g, '<br/>')}</div>`,
+                                                            confirmButtonText: 'Close'
+                                                        })}
+                                                    >
+                                                        View
+                                                    </button>
+                                                ) : <span style={{ color: '#cbd5e1' }}>-</span>}
+                                            </td>
+                                            <td>
+                                                {statusBadge(l.status)}
+                                                {l.status === 'Rejected' && l.approverComments && (
+                                                    <div style={{ marginTop: 4 }}>
+                                                        <button
+                                                            className="btn btn-secondary btn-sm"
+                                                            style={{ fontSize: '10px', padding: '2px 8px', color: '#dc2626', fontWeight: 600 }}
+                                                            onClick={() => Swal.fire({
+                                                                title: 'Rejection Reason',
+                                                                html: `<div style="text-align:left;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:14px;font-size:13px;color:#991b1b;line-height:1.6;">${l.approverComments.replace(/\n/g, '<br/>')}</div>`,
+                                                                confirmButtonText: 'Close'
+                                                            })}
+                                                        >
+                                                            View Reason
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     {filteredLeaves.length === 0 && <tr><td colSpan="6"><div className="empty-state"><h3>No leave records found for this period</h3></div></td></tr>}
