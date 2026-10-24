@@ -13,6 +13,13 @@ exports.uploadDocument = async (req, res) => {
             const user = await User.findById(req.user.id);
             empId = user?.employeeId || req.user.id;
         }
+
+        const EmployeeModel = require('../models/Employee');
+        const employee = await EmployeeModel.findById(empId);
+        if (employee && employee.status === 'Terminated / Ex-Employee') {
+            return res.status(403).json({ success: false, message: 'Ex-employees are not permitted to upload documents.' });
+        }
+
         const doc = await Document.create({
             employee: empId,
             name: name || 'Untitled',
@@ -115,6 +122,12 @@ exports.updateDocument = async (req, res) => {
         // Block edit if already approved (unless admin)
         if (doc.status === 'Approved' && !['SuperAdmin', 'HRAdmin', 'Admin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, message: 'Approved documents cannot be edited' });
+        }
+
+        const EmployeeModel = require('../models/Employee');
+        const employee = await EmployeeModel.findById(doc.employee);
+        if (employee && employee.status === 'Terminated / Ex-Employee' && !['SuperAdmin', 'HRAdmin', 'Admin'].includes(req.user.role)) {
+            return res.status(403).json({ success: false, message: 'Ex-employees are not permitted to edit documents.' });
         }
 
         if (req.body.name) doc.name = req.body.name;

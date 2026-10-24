@@ -26,6 +26,9 @@ exports.applyLeave = async (req, res) => {
         }
         const employee = await Employee.findById(req.user.employeeId);
         if (!employee) return res.status(404).json({ success: false, message: 'Employee not found' });
+        if (employee.status === 'Terminated / Ex-Employee') {
+            return res.status(403).json({ success: false, message: 'Ex-employees are not eligible to apply for leaves.' });
+        }
         const balanceKey = leaveType.toLowerCase();
         if (employee.leaveBalance[balanceKey] !== undefined && employee.leaveBalance[balanceKey] < totalDays && balanceKey !== 'unpaid') {
             return res.status(400).json({ success: false, message: `Insufficient ${leaveType} leave balance. Available: ${employee.leaveBalance[balanceKey]}` });

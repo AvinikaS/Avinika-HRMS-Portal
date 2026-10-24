@@ -62,6 +62,9 @@ exports.createTicket = async (req, res) => {
         if (!employee) {
             return res.status(400).json({ success: false, message: 'Employee profile not linked to your account.' });
         }
+        if (employee.status === 'Terminated / Ex-Employee') {
+            return res.status(403).json({ success: false, message: 'Ex-employees / terminated employees cannot raise support tickets.' });
+        }
 
         if (!subject || !description) {
             return res.status(400).json({ success: false, message: 'Subject and description are required.' });

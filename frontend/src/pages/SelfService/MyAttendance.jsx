@@ -7,7 +7,7 @@ import AttendanceCalendar from './AttendanceCalendar';
 import { HiOutlineX, HiOutlineTable, HiOutlineCalendar } from 'react-icons/hi';
 
 export default function MyAttendance() {
-    const { user } = useAuth();
+    const { user, isExEmployee } = useAuth();
     const [todayStatus, setTodayStatus] = useState(null);
     const [records, setRecords] = useState([]);
     const [holidays, setHolidays] = useState([]);
@@ -88,7 +88,8 @@ export default function MyAttendance() {
                 </div>
             </div>
 
-            <div className="checkin-card" style={{ marginBottom: 28 }}>
+            {!isExEmployee && (
+                <div className="checkin-card" style={{ marginBottom: 28 }}>
                 <div className="date">{time.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                 <div className="time">{time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
                 {isCheckedOut ? (
@@ -108,6 +109,7 @@ export default function MyAttendance() {
                 )}
                 {isCheckedIn && <div style={{ marginTop: 10, opacity: 0.7, fontSize: 13 }}>Checked in at {formatTime(todayStatus.checkIn)}</div>}
             </div>
+            )}
 
             {showSmartModal && (
                 <div className="modal-overlay" onClick={() => setShowSmartModal(false)}>

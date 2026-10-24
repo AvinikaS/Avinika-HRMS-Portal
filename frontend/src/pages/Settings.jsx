@@ -450,13 +450,27 @@ export default function Settings() {
                             </div>
                             <div className="form-group" style={{ marginBottom: 12 }}>
                                 <label className="form-label">Default Notice Period Requirements (Days)</label>
-                                <input type="number" className="form-control" value={generalSettings.noticePeriodDays} onChange={e => setGeneralSettings({ ...generalSettings, noticePeriodDays: Number(e.target.value) })} />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    className="form-control"
+                                    value={generalSettings.noticePeriodDays}
+                                    onKeyDown={e => { if (e.key === '-' || e.key === 'Minus') e.preventDefault(); }}
+                                    onChange={e => setGeneralSettings({ ...generalSettings, noticePeriodDays: Math.max(0, Number(e.target.value)) })}
+                                />
                             </div>
                         </div>
                         <div className="form-row" style={{ marginTop: 12 }}>
                             <div className="form-group" style={{ marginBottom: 12 }}>
                                 <label className="form-label">Gratuity Statutory Payment Timeline Limit (Days)</label>
-                                <input type="number" className="form-control" value={generalSettings.gratuityTimeline} onChange={e => setGeneralSettings({ ...generalSettings, gratuityTimeline: Number(e.target.value) })} />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    className="form-control"
+                                    value={generalSettings.gratuityTimeline}
+                                    onKeyDown={e => { if (e.key === '-' || e.key === 'Minus') e.preventDefault(); }}
+                                    onChange={e => setGeneralSettings({ ...generalSettings, gratuityTimeline: Math.max(0, Number(e.target.value)) })}
+                                />
                             </div>
                             <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', marginBottom: 12 }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', fontWeight: 600 }}>

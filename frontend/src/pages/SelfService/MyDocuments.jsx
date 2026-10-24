@@ -2,9 +2,11 @@ import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { HiOutlineDocumentText, HiOutlineUpload, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
 
 export default function MyDocuments() {
+    const { isExEmployee } = useAuth();
     const [documents, setDocuments] = useState([]);
     const [form16s, setForm16s] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -71,6 +73,10 @@ export default function MyDocuments() {
 
     const handleUpload = async (e) => {
         e.preventDefault();
+        if (isExEmployee) {
+            toast.error('Ex-employees are not permitted to upload documents.');
+            return;
+        }
         if (!file) return toast.error('Please select a file');
         setUploading(true);
         try {
@@ -139,7 +145,7 @@ export default function MyDocuments() {
                 }
             `}</style>
             <div className="page-header">
-                <div><h1>My Documents</h1><p>Upload and manage your documents</p></div>
+                <div><h1>My Documents</h1><p>{isExEmployee ? 'View and download your official documents' : 'Upload and manage your documents'}</p></div>
             </div>
             <div style={{ marginBottom: 32 }}>
                 <h2 style={{ fontSize: 16, marginBottom: 12 }}>Form 16 (Annual TDS Certificate)</h2>
@@ -170,9 +176,11 @@ export default function MyDocuments() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
                 <h2 style={{ fontSize: 16, margin: 0 }}>My Uploaded Documents</h2>
-                <button className="btn btn-primary" onClick={() => { setEditingDoc(null); setDocName(''); setDocType(''); setShowModal(true); }}>
-                    <HiOutlineUpload /> Upload Document
-                </button>
+                {!isExEmployee && (
+                    <button className="btn btn-primary" onClick={() => { setEditingDoc(null); setDocName(''); setDocType(''); setShowModal(true); }}>
+                        <HiOutlineUpload /> Upload Document
+                    </button>
+                )}
             </div>
 
             {documents.length === 0 ? (
@@ -180,8 +188,10 @@ export default function MyDocuments() {
                     <div className="empty-state">
                         <div className="empty-icon">📂</div>
                         <h3>No documents uploaded</h3>
-                        <p>Upload your ID proof, address proof, etc.</p>
-                        <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ marginTop: 16 }}>Upload First Document</button>
+                        <p>{isExEmployee ? 'No official documents on record.' : 'Upload your ID proof, address proof, etc.'}</p>
+                        {!isExEmployee && (
+                            <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ marginTop: 16 }}>Upload First Document</button>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -210,7 +220,7 @@ export default function MyDocuments() {
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary">View</a>
-                                {doc.status !== 'Approved' && (
+                                {!isExEmployee && doc.status !== 'Approved' && (
                                     <>
                                         <button className="btn btn-sm btn-secondary" onClick={() => { setEditingDoc(doc); setDocName(doc.name); setDocType(doc.type); setShowModal(true); }}>Edit</button>
                                         <button className="btn btn-sm btn-danger" onClick={() => handleDelete(doc._id)}><HiOutlineTrash /></button>

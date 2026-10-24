@@ -17,6 +17,13 @@ exports.getAdvances = async (req, res) => {
 
 exports.applyAdvance = async (req, res) => {
     try {
+        if (req.user.role === 'Employee') {
+            const EmployeeModel = require('../models/Employee');
+            const emp = await EmployeeModel.findById(req.user.employeeId);
+            if (emp?.status === 'Terminated / Ex-Employee') {
+                return res.status(403).json({ success: false, message: 'Ex-employees / terminated employees cannot apply for advance salary.' });
+            }
+        }
         const { amount, recoveryDuration } = req.body;
         const installmentAmount = Math.ceil(Number(amount) / Number(recoveryDuration));
 

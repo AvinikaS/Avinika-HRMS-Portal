@@ -2,12 +2,14 @@ import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { HiOutlinePlus, HiOutlineX } from 'react-icons/hi';
 
 const LEAVE_TYPES = ['Casual', 'Sick', 'Earned', 'Unpaid', 'Other'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function MyLeaves() {
+    const { isExEmployee } = useAuth();
     const [leaves, setLeaves] = useState([]);
     const [balance, setBalance] = useState({});
     const [showModal, setShowModal] = useState(false);
@@ -126,7 +128,9 @@ export default function MyLeaves() {
                         {years.map(y => <option key={y._id} value={y.year}>{y.year}</option>)}
                         {years.length === 0 && <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>}
                     </select>
-                    <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}><HiOutlinePlus /> Apply Leave</button>
+                    {!isExEmployee && (
+                        <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}><HiOutlinePlus /> Apply Leave</button>
+                    )}
                 </div>
             </div>
 

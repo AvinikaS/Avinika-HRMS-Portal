@@ -101,8 +101,17 @@ const employeeNavItems = [
     { path: '/expenses', label: 'Expense & Reimbursement', icon: HiOutlineCash },
 ];
 
+const exEmployeeNavItems = [
+    { section: 'Ex-Employee Portal' },
+    { path: '/', label: 'My Overview', icon: HiOutlineViewGrid },
+    { path: '/my-payslips', label: 'My Payslips', icon: HiOutlineCurrencyDollar },
+    { path: '/resignation', label: 'Exit Documents', icon: HiOutlineDocumentText },
+    { path: '/my-documents', label: 'My Documents', icon: HiOutlineDocumentText },
+    { path: '/my-profile', label: 'My Profile', icon: HiOutlineUser },
+];
+
 export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
-    const { user, isAdmin, isManager } = useAuth();
+    const { user, isAdmin, isManager, isExEmployee } = useAuth();
     const location = useLocation();
     const [expanded, setExpanded] = useState({});
 

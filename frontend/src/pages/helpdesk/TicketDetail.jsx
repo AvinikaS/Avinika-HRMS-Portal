@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import {
     HiOutlineArrowLeft, HiOutlinePaperClip, HiOutlineX, HiOutlineStar,
     HiOutlineRefresh, HiOutlineCheck, HiOutlineChevronDown,
@@ -44,6 +45,7 @@ function StarRating({ value, onChange }) {
 }
 
 export default function TicketDetail() {
+    const { isExEmployee } = useAuth();
     const { id } = useParams();
     const navigate = useNavigate();
     const [ticket, setTicket] = useState(null);
@@ -231,11 +233,11 @@ export default function TicketDetail() {
         </div>
     );
 
-    const canReply = !['CLOSED'].includes(ticket.status);
-    const canClose = ticket.status === 'RESOLVED';
-    const canReopen = ticket.status === 'RESOLVED';
-    const canFeedback = ['RESOLVED', 'CLOSED'].includes(ticket.status) && !ticket.feedback?.rating;
-    const canEditDelete = ticket.status === 'OPEN' && !ticket.assignedToName;
+    const canReply = !['CLOSED'].includes(ticket.status) && !isExEmployee;
+    const canClose = ticket.status === 'RESOLVED' && !isExEmployee;
+    const canReopen = ticket.status === 'RESOLVED' && !isExEmployee;
+    const canFeedback = ['RESOLVED', 'CLOSED'].includes(ticket.status) && !ticket.feedback?.rating && !isExEmployee;
+    const canEditDelete = ticket.status === 'OPEN' && !ticket.assignedToName && !isExEmployee;
 
     return (
         <div className="animate-fadeIn" style={{ maxWidth: 900, margin: '0 auto' }}>

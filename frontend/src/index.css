@@ -548,7 +548,8 @@ img {
   height: 3px;
 }
 
-.stat-card.purple::before {
+.stat-card.purple::before,
+.stat-card.primary::before {
   background: var(--primary-gradient);
 }
 

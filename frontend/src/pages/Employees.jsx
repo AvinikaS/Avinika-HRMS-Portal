@@ -13,6 +13,7 @@ export default function Employees() {
     const [employees, setEmployees] = useState([]);
     const [search, setSearch] = useState('');
     const [filterDept, setFilterDept] = useState('');
+    const [filterStatus, setFilterStatus] = useState('Active');
     const [showModal, setShowModal] = useState(false);
     const [showWizard, setShowWizard] = useState(false);
     const [wizardInitialData, setWizardInitialData] = useState(null);
@@ -99,30 +100,41 @@ export default function Employees() {
     };
 
     const statusBadge = (s) => {
-        const map = { Active: 'badge-success', Inactive: 'badge-neutral', 'On Notice': 'badge-warning', Terminated: 'badge-danger', Resigned: 'badge-danger' };
+        const map = {
+            'Active': 'badge-success',
+            'Resigned / Notice Period': 'badge-warning',
+            'Terminated / Ex-Employee': 'badge-danger'
+        };
         return <span className={`badge ${map[s] || 'badge-neutral'}`}>{s}</span>;
     };
 
     const handleExportExcel = () => {
-        if (!employees || employees.length === 0) {
-            toast.error('No employee data available to export.');
+        // Filter employees according to current active tab
+        const targetEmployees = filterStatus
+            ? employees.filter(e => e.status === filterStatus)
+            : employees;
+
+        if (!targetEmployees || targetEmployees.length === 0) {
+            toast.warning(`No employees found under "${filterStatus || 'All'}" to export.`);
             return;
         }
 
         const headers = [
             'Employee Code', 'First Name', 'Last Name', 'Email', 'Phone', 'Gender',
             'Department', 'Designation', 'Employment Type', 'Status', 'Date of Joining', 'Date of Birth',
-            'Aadhaar Number', 'Basic Salary', 'HRA', 'Travel Allowance', 'Food Allowance', 'Other Allowance',
-            'Gross Salary', 'PF Percentage', 'Tax Slab Enabled'
+            'Aadhaar Number', 'PAN Number', 'Bank Name', 'Account Number', 'IFSC Code',
+            'Basic Salary', 'HRA', 'Travel / Conveyance', 'Food Allowance', 'Other Allowance',
+            'Gross Salary', 'Net Salary', 'PF Percentage', 'Tax Regime'
         ];
 
         const generateRow = (emp) => {
-            const b = emp.salary?.basic || 0;
-            const h = emp.salary?.hra || 0;
-            const t = emp.salary?.allowances?.travel || 0;
+            const b = emp.basic != null && emp.basic !== 0 ? emp.basic : (emp.salary?.basic || 0);
+            const h = emp.hra != null && emp.hra !== 0 ? emp.hra : (emp.salary?.hra || 0);
+            const t = emp.conveyance != null && emp.conveyance !== 0 ? emp.conveyance : (emp.salary?.allowances?.travel || 0);
             const f = emp.salary?.allowances?.food || 0;
-            const o = emp.salary?.allowances?.other || 0;
-            const gross = b + h + t + f + o;
+            const o = emp.otherAllowance != null && emp.otherAllowance !== 0 ? emp.otherAllowance : (emp.specialAllowance || emp.salary?.allowances?.other || 0);
+            const gross = emp.gross != null && emp.gross !== 0 ? emp.gross : (b + h + t + f + o);
+            const net = emp.netSalary != null ? emp.netSalary : 0;
 
             return [
                 emp.employeeCode || '',
@@ -138,37 +150,82 @@ export default function Employees() {
                 emp.dateOfJoining ? new Date(emp.dateOfJoining).toLocaleDateString() : '',
                 emp.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString() : '',
                 emp.aadhaar || '',
-                b, h, t, f, o, gross,
-                emp.salary?.pfPercentage || 0,
-                emp.salary?.taxSlabApplicable ? 'Yes' : 'No'
+                emp.pan || emp.complianceDetails?.panNumber || '',
+                emp.bankName || emp.bankDetails?.bankName || '',
+                emp.accountNumber || emp.bankDetails?.accountNumber || '',
+                emp.ifscCode || emp.bankDetails?.ifscCode || '',
+                b, h, t, f, o, gross, net,
+                emp.pfEmployee || emp.salary?.pfPercentage || 12,
+                emp.taxRegime || emp.salary?.taxRegime || 'New'
             ];
         };
 
+        const setAutoWidth = (ws, data) => {
+            const colWidths = [];
+            data.forEach(row => {
+                row.forEach((cell, i) => {
+                    const val = cell != null ? String(cell) : '';
+                    colWidths[i] = Math.max(colWidths[i] || 10, Math.min(val.length + 3, 40));
+                });
+            });
+            ws['!cols'] = colWidths.map(w => ({ wch: w }));
+        };
+
+        const safeSheetName = (name) => {
+            let cleaned = (name || 'Sheet')
+                .replace(/[\\\/\?\*\[\]\:]/g, ' ')
+                .trim();
+            if (cleaned.length > 31) {
+                cleaned = cleaned.substring(0, 31).trim();
+            }
+            return cleaned || 'Sheet';
+        };
+
         const wb = XLSX.utils.book_new();
+        const usedSheetNames = new Set();
+        const addSheet = (sheetData, requestedName) => {
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            setAutoWidth(ws, sheetData);
+            let sheetName = safeSheetName(requestedName);
+            let counter = 1;
+            while (usedSheetNames.has(sheetName.toLowerCase())) {
+                const suffix = ` (${counter})`;
+                sheetName = safeSheetName(sheetName.substring(0, 31 - suffix.length) + suffix);
+                counter++;
+            }
+            usedSheetNames.add(sheetName.toLowerCase());
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        };
+
+        const statusTag = filterStatus ? filterStatus.replace(/[\/\s]+/g, '_') : 'All';
 
         if (!filterDept) {
-            // "All Departments" is selected -> Create multiple sheets
-            const grouped = employees.reduce((acc, emp) => {
-                const dName = emp.department || 'Unassigned';
+            // First Sheet: All employees in the current active tab
+            const allRows = targetEmployees.map(generateRow);
+            addSheet([headers, ...allRows], `All ${filterStatus || 'Employees'}`);
+
+            // Separate sheets for each department
+            const grouped = targetEmployees.reduce((acc, emp) => {
+                const dName = emp.department ? emp.department.trim() : 'Unassigned';
                 if (!acc[dName]) acc[dName] = [];
                 acc[dName].push(emp);
                 return acc;
             }, {});
 
-            Object.keys(grouped).forEach(deptName => {
+            const deptNames = Object.keys(grouped).sort();
+            deptNames.forEach(deptName => {
                 const rows = grouped[deptName].map(generateRow);
-                const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-                const sheetName = deptName.substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '');
-                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                addSheet([headers, ...rows], deptName);
             });
-            XLSX.writeFile(wb, `Employees_All_Departments.xlsx`);
+
+            XLSX.writeFile(wb, `Employees_${statusTag}_All_Departments.xlsx`);
+            toast.success(`Exported ${targetEmployees.length} ${filterStatus} employees across ${deptNames.length} departments.`);
         } else {
-            // A specific department is filtered -> Create single sheet
-            const rows = employees.map(generateRow);
-            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-            const sheetName = filterDept.substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '');
-            XLSX.utils.book_append_sheet(wb, ws, sheetName || "Employees");
-            XLSX.writeFile(wb, `Employees_${filterDept.replace(/\s+/g, '_')}_Export.xlsx`);
+            // Specific department filtered
+            const rows = targetEmployees.map(generateRow);
+            addSheet([headers, ...rows], filterDept);
+            XLSX.writeFile(wb, `Employees_${statusTag}_${filterDept.replace(/\s+/g, '_')}.xlsx`);
+            toast.success(`Exported ${targetEmployees.length} ${filterStatus} employees for ${filterDept}.`);
         }
     };
 
@@ -187,9 +244,51 @@ export default function Employees() {
                 </div>
             </div>
 
+            {/* Status Filter Tabs */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+                {[
+                    { label: '🟢 Active', value: 'Active', color: '#059669', bg: '#ecfdf5', activeBg: '#059669' },
+                    { label: '🟡 Resigned / Notice Period', value: 'Resigned / Notice Period', color: '#d97706', bg: '#fffbeb', activeBg: '#d97706' },
+                    { label: '🔴 Terminated / Ex-Employee', value: 'Terminated / Ex-Employee', color: '#dc2626', bg: '#fef2f2', activeBg: '#dc2626' },
+                ].map(tab => {
+                    const count = employees.filter(e => e.status === tab.value).length;
+                    const isActive = filterStatus === tab.value;
+                    return (
+                        <button
+                            key={tab.value}
+                            onClick={() => setFilterStatus(tab.value)}
+                            style={{
+                                padding: '7px 16px',
+                                borderRadius: 8,
+                                border: `2px solid ${tab.color}`,
+                                background: isActive ? tab.activeBg : tab.bg,
+                                color: isActive ? '#fff' : tab.color,
+                                fontWeight: 600,
+                                fontSize: 13,
+                                cursor: 'pointer',
+                                transition: 'all 0.18s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                            }}
+                        >
+                            {tab.label}
+                            <span style={{
+                                background: isActive ? 'rgba(255,255,255,0.3)' : tab.color,
+                                color: '#fff',
+                                borderRadius: 20,
+                                padding: '1px 8px',
+                                fontSize: 12,
+                                fontWeight: 700,
+                            }}>{count}</span>
+                        </button>
+                    );
+                })}
+            </div>
+
             <div className="table-container">
                 <div className="table-header">
-                    <h3>{employees.length} Employees</h3>
+                    <h3>{(filterStatus ? employees.filter(e => e.status === filterStatus) : employees).length} Employees{filterStatus ? ` — ${filterStatus}` : ''}</h3>
                     <div className="table-actions">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <select className="form-control emp-dept-select" value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ width: 160, padding: '8px 32px 8px 12px' }}>
@@ -212,9 +311,9 @@ export default function Employees() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {employees.length === 0 ? (
+                                {(filterStatus ? employees.filter(e => e.status === filterStatus) : employees).length === 0 ? (
                                     <tr><td colSpan="7"><div className="empty-state"><div className="empty-icon">👥</div><h3>No employees found</h3><p>Add your first employee to get started</p></div></td></tr>
-                                ) : employees.map((emp, i) => (
+                                ) : (filterStatus ? employees.filter(e => e.status === filterStatus) : employees).map((emp, i) => (
                                     <tr key={emp._id}>
                                         <td style={{ maxWidth: 200, minWidth: 140 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

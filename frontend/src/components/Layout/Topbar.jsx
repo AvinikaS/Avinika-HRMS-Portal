@@ -33,7 +33,7 @@ export default function Topbar({ collapsed, setMobileOpen, title }) {
     useEffect(() => {
         fetchNotifications();
 
-        const token = sessionStorage.getItem('hrms_token');
+        const token = localStorage.getItem('hrms_token') || sessionStorage.getItem('hrms_token');
         const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         const defaultApiUrl = isProduction
             ? 'https://avinika-hrms-portal.vercel.app/api'

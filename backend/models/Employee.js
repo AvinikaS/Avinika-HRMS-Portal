@@ -22,7 +22,7 @@ const employeeSchema = new mongoose.Schema({
     workLocation: { type: String },
     shift: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift' },
     employmentType: { type: String, enum: ['Full-Time', 'Part-Time', 'Contract', 'Intern', 'Probation', 'Full-time', 'Part-time'], default: 'Full-time' },
-    status: { type: String, enum: ['Active', 'Inactive', 'On Notice', 'Terminated', 'Resigned', 'Exit In Progress'], default: 'Active' },
+    status: { type: String, enum: ['Active', 'Resigned / Notice Period', 'Terminated / Ex-Employee'], default: 'Active' },
 
     // NEW FLATTENED FIELDS FOR WIZARD
     basic: { type: Number, default: 0 },

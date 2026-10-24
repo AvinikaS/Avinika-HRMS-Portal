@@ -138,7 +138,7 @@ const pageTitles = {
 function AppLayout() {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
-    const { user, isAdmin, isManager } = useAuth();
+    const { user, isAdmin, isManager, isExEmployee } = useAuth();
 
     const location = useLocation();
     const title = pageTitles[location.pathname] || 'HRMS Portal';
@@ -194,10 +194,10 @@ function AppLayout() {
                             </>
                         ) : null}
 
-                        {/* Self-Service Routes (available to all) */}
-                        <Route path={isAdmin || isManager ? '/my-attendance' : '/my-attendance'} element={<MyAttendance />} />
+                        {/* Self-Service Routes (available to active and ex-employees) */}
+                        <Route path="/my-attendance" element={<MyAttendance />} />
                         <Route path="/my-regularizations" element={<MyAttendanceRegularization />} />
-                        <Route path="/my-regularizations/create" element={<CreateRegularization />} />
+                        <Route path="/my-regularizations/create" element={isExEmployee ? <Navigate to="/my-regularizations" /> : <CreateRegularization />} />
                         <Route path="/my-regularizations/:id" element={<RegularizationDetail />} />
                         <Route path="/my-leaves" element={<MyLeaves />} />
                         <Route path="/my-payslips" element={<MyPayslips />} />
@@ -210,12 +210,12 @@ function AppLayout() {
                         <Route path="/holiday-calendar" element={<HolidayCalendar />} />
                         {/* Employee Helpdesk */}
                         <Route path="/helpdesk" element={<MyHelpdesk />} />
-                        <Route path="/helpdesk/create" element={<CreateTicket />} />
+                        <Route path="/helpdesk/create" element={isExEmployee ? <Navigate to="/helpdesk" /> : <CreateTicket />} />
                         <Route path="/helpdesk/tickets/:id" element={<TicketDetail />} />
                         {/* Employee Expense & Reimbursement */}
                         <Route path="/expenses" element={<ExpenseDashboard />} />
                         <Route path="/expenses/my" element={<MyExpenses />} />
-                        <Route path="/expenses/create" element={<CreateExpense />} />
+                        <Route path="/expenses/create" element={isExEmployee ? <Navigate to="/expenses" /> : <CreateExpense />} />
                         <Route path="/expenses/:id" element={<ExpenseDetail />} />
                         {/* Employee-only default */}
                         {!isAdmin && !isManager && <Route path="/" element={<EmployeeDashboard />} />}

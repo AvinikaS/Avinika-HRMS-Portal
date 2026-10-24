@@ -51,9 +51,10 @@ export function AuthProvider({ children }) {
     const isAdmin = user && ['SuperAdmin', 'HRAdmin'].includes(user.role);
     const isManager = user && ['SuperAdmin', 'HRAdmin', 'Manager'].includes(user.role);
     const isRecruiter = user && ['SuperAdmin', 'HRAdmin', 'Recruiter'].includes(user.role);
+    const isExEmployee = Boolean(user?.employeeId?.status === 'Terminated / Ex-Employee');
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, fetchMe, loading, isAdmin, isManager, isRecruiter }}>
+        <AuthContext.Provider value={{ user, login, logout, fetchMe, loading, isAdmin, isManager, isRecruiter, isExEmployee }}>
             {children}
         </AuthContext.Provider>
     );

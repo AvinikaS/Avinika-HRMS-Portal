@@ -43,6 +43,9 @@ exports.submitRegularization = async (req, res) => {
         if (!employee) {
             return res.status(404).json({ success: false, message: 'Employee profile not found' });
         }
+        if (employee.status === 'Terminated / Ex-Employee') {
+            return res.status(403).json({ success: false, message: 'Ex-employees / terminated employees cannot submit attendance regularizations.' });
+        }
 
         const {
             attendanceDate,

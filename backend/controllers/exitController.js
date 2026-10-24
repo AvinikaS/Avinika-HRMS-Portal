@@ -163,9 +163,9 @@ exports.submitResignation = async (req, res) => {
             await exitRequest.save();
         }
 
-        // Update employee status to 'Exit In Progress' if initiated directly (e.g. death/disablement case)
+        // Update employee status to 'Resigned / Notice Period' if initiated directly (e.g. death/disablement case)
         if (approvalStatus === 'exit_initiated') {
-            await Employee.findByIdAndUpdate(targetEmployeeId, { status: 'Exit In Progress' });
+            await Employee.findByIdAndUpdate(targetEmployeeId, { status: 'Resigned / Notice Period' });
         }
 
         // Triggers notification only if not draft
@@ -203,9 +203,9 @@ exports.getAllExits = async (req, res) => {
     try {
         const exits = await ExitRequest.find({ approvalStatus: { $ne: 'draft' } }).populate('employeeId', 'firstName lastName employeeCode dateOfJoining basic gross leaveBalance status');
 
-        // Auto-heal/sync database for draft/pending requests where employee might have been set to On Notice prematurely
+        // Auto-heal/sync database for draft/pending requests where employee might have been set to Resigned / Notice Period prematurely
         for (const ex of exits) {
-            if (ex.approvalStatus === 'pending' && ex.employeeId && ex.employeeId.status === 'On Notice') {
+            if (ex.approvalStatus === 'pending' && ex.employeeId && ex.employeeId.status === 'Resigned / Notice Period') {
                 await Employee.findByIdAndUpdate(ex.employeeId._id, { status: 'Active' });
                 ex.employeeId.status = 'Active';
             }
@@ -286,7 +286,7 @@ exports.updateExitStatus = async (req, res) => {
 
         // Update employee status based on approval/rejection
         if (updateStatus === 'hr_approved') {
-            await Employee.findByIdAndUpdate(exitRequest.employeeId, { status: 'On Notice' });
+            await Employee.findByIdAndUpdate(exitRequest.employeeId, { status: 'Resigned / Notice Period' });
         } else if (status === 'Rejected') {
             await Employee.findByIdAndUpdate(exitRequest.employeeId, { status: 'Active' });
         }
@@ -738,10 +738,10 @@ exports.completeExit = async (req, res) => {
             await settlement.save();
         }
 
-        // Deactivate employee & save leaving date
-        await Employee.findByIdAndUpdate(exit.employeeId, { status: 'Inactive', dateOfLeaving: exit.lastWorkingDay });
+        // Mark employee as Terminated / Ex-Employee & save leaving date
+        await Employee.findByIdAndUpdate(exit.employeeId, { status: 'Terminated / Ex-Employee', dateOfLeaving: exit.lastWorkingDay });
 
-        res.json({ success: true, message: 'Exit workflow completed. Employee marked Inactive.' });
+        res.json({ success: true, message: 'Exit workflow completed. Employee marked as Terminated / Ex-Employee.' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -750,8 +750,8 @@ exports.completeExit = async (req, res) => {
 // GET /api/exit/documents/:exitRequestId
 exports.generateDocument = async (req, res) => {
     try {
-        const { exitRequestId } = req.params;
-        const { type } = req.query; // ff_letter, experience_letter, relieving_letter
+        const exitRequestId = req.params.exitRequestId || req.params.typeOrId;
+        const type = req.query.type || req.params.type; // ff_letter, experience_letter, relieving_letter
 
         let exit = null;
         if (exitRequestId && mongoose.Types.ObjectId.isValid(exitRequestId)) {
@@ -1230,8 +1230,8 @@ exports.getResignationStatus = async (req, res) => {
             };
         }
 
-        // Documents are only ready when exit is fully completed (meaning employee status is Inactive)
-        const exitCompleted = employee.status === 'Inactive';
+        // Documents are only ready when exit is fully completed (meaning employee status is Terminated / Ex-Employee)
+        const exitCompleted = employee.status === 'Terminated / Ex-Employee';
         const documentsReady = exitCompleted;
 
         res.json({
@@ -1275,7 +1275,7 @@ exports.downloadSelfDocument = async (req, res, next) => {
 
         const emp = await Employee.findById(employeeId);
         if (!emp) return res.status(404).send('Employee not found');
-        if (emp.status !== 'Inactive') {
+        if (emp.status !== 'Terminated / Ex-Employee') {
             return res.status(403).send('Exit process not completed yet. Documents will be downloadable after complete offboarding.');
         }
 

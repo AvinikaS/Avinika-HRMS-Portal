@@ -58,7 +58,7 @@ router.post('/:jobId/apply', async (req, res) => {
         if (phone) orConditions.push({ phone });
         if (aadhaar) orConditions.push({ aadhaar });
 
-        const prevEmployee = await Employee.findOne({ $or: orConditions, status: { $in: ['Inactive', 'Resigned', 'Terminated'] } });
+        const prevEmployee = await Employee.findOne({ $or: orConditions, status: { $in: ['Terminated / Ex-Employee'] } });
         let isPreviousEmployee = false;
         let previousEmploymentHistory = [];
         if (prevEmployee) {
@@ -137,7 +137,7 @@ router.post('/webhook/:platform', async (req, res) => {
         if (candidatePhone) orConditions.push({ phone: candidatePhone });
         if (aadhaar) orConditions.push({ aadhaar });
 
-        const prevEmployee = await Employee.findOne({ $or: orConditions, status: { $in: ['Inactive', 'Resigned', 'Terminated'] } });
+        const prevEmployee = await Employee.findOne({ $or: orConditions, status: { $in: ['Terminated / Ex-Employee'] } });
         const existingCandidate = await Candidate.findOne({ $or: orConditions });
 
         const candidate = await Candidate.create({

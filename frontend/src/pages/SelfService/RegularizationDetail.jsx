@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import {
@@ -10,6 +11,7 @@ import {
 } from 'react-icons/hi';
 
 export default function RegularizationDetail() {
+    const { isExEmployee } = useAuth();
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -295,20 +297,24 @@ export default function RegularizationDetail() {
 
                 {/* Actions */}
                 <div className="reg-detail-actions">
-                    {record.status === 'DRAFT' && (
+                    {!isExEmployee && (
                         <>
-                            <button onClick={handleSubmitDraft} disabled={actionLoading} className="btn btn-primary" style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', borderRadius: '6px', border: 'none' }}>
-                                Submit to HR
-                            </button>
-                            <button onClick={handleCancel} disabled={actionLoading} className="btn btn-danger" style={{ padding: '8px 16px', background: '#dc2626', color: '#fff', borderRadius: '6px', border: 'none' }}>
-                                Cancel Request
-                            </button>
+                            {record.status === 'DRAFT' && (
+                                <>
+                                    <button onClick={handleSubmitDraft} disabled={actionLoading} className="btn btn-primary" style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', borderRadius: '6px', border: 'none' }}>
+                                        Submit to HR
+                                    </button>
+                                    <button onClick={handleCancel} disabled={actionLoading} className="btn btn-danger" style={{ padding: '8px 16px', background: '#dc2626', color: '#fff', borderRadius: '6px', border: 'none' }}>
+                                        Cancel Request
+                                    </button>
+                                </>
+                            )}
+                            {record.status === 'PENDING_HR_REVIEW' && (
+                                <button onClick={handleCancel} disabled={actionLoading} className="btn btn-outline-danger" style={{ padding: '8px 16px', border: '1px solid #dc2626', color: '#dc2626', borderRadius: '6px', background: '#fff' }}>
+                                    Cancel Request
+                                </button>
+                            )}
                         </>
-                    )}
-                    {record.status === 'PENDING_HR_REVIEW' && (
-                        <button onClick={handleCancel} disabled={actionLoading} className="btn btn-outline-danger" style={{ padding: '8px 16px', border: '1px solid #dc2626', color: '#dc2626', borderRadius: '6px', background: '#fff' }}>
-                            Cancel Request
-                        </button>
                     )}
                 </div>
             </div>
@@ -474,7 +480,7 @@ export default function RegularizationDetail() {
             </div>
 
             {/* Information Required Response Section */}
-            {record.status === 'INFORMATION_REQUIRED' && (
+            {record.status === 'INFORMATION_REQUIRED' && !isExEmployee && (
                 <div className="card" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', fontWeight: '700', fontSize: '16px', marginBottom: '8px' }}>
                         <HiOutlineExclamationCircle size={22} /> HR Requested Additional Information

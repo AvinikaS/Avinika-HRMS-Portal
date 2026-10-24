@@ -21,7 +21,16 @@ exports.login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         if (!user.isActive) {
-            return res.status(403).json({ success: false, message: 'Account is deactivated' });
+            let emp = user.employeeId;
+            if (!emp) {
+                emp = await Employee.findOne({ $or: [{ userId: user._id }, { email: user.email }] });
+            }
+            if (emp && emp.status === 'Terminated / Ex-Employee') {
+                await User.findByIdAndUpdate(user._id, { isActive: true });
+                user.isActive = true;
+            } else {
+                return res.status(403).json({ success: false, message: 'Account is deactivated' });
+            }
         }
         await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
         res.json({
@@ -183,7 +192,15 @@ exports.forgotPassword = async (req, res) => {
 
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) return res.status(404).json({ success: false, message: 'No account found with this email' });
-        if (!user.isActive) return res.status(403).json({ success: false, message: 'Account is deactivated' });
+        if (!user.isActive) {
+            const emp = await Employee.findOne({ $or: [{ userId: user._id }, { email: user.email }] });
+            if (emp && emp.status === 'Terminated / Ex-Employee') {
+                user.isActive = true;
+                await user.save();
+            } else {
+                return res.status(403).json({ success: false, message: 'Account is deactivated' });
+            }
+        }
 
         // Generate 6-digit OTP
         const otp = crypto.randomInt(100000, 999999).toString();

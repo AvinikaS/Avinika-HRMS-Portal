@@ -207,7 +207,7 @@ export default function BankAdvice() {
 
             {/* Metrics */}
             <div className="stat-grid" style={{ marginBottom: 24 }}>
-                <div className="stat-card primary">
+                <div className="stat-card blue">
                     <div className="stat-content">
                         <div className="stat-label">Total Employees</div>
                         <div className="stat-value">{processedEmployees.length}</div>

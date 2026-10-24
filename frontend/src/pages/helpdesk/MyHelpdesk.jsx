@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { HiOutlineTicket, HiOutlineExclamationCircle, HiOutlineCheckCircle, HiOutlineClock, HiOutlinePlus, HiOutlineRefresh } from 'react-icons/hi';
 
 const STATUS_LABELS = {
@@ -21,6 +22,7 @@ const PRIORITY_LABELS = {
 };
 
 export default function MyHelpdesk() {
+    const { isExEmployee } = useAuth();
     const navigate = useNavigate();
     const [summary, setSummary] = useState({ total: 0, open: 0, inProgress: 0, waitingForMe: 0, resolved: 0, closed: 0 });
     const [tickets, setTickets] = useState([]);
@@ -80,9 +82,11 @@ export default function MyHelpdesk() {
                     <h1>My Helpdesk Tickets</h1>
                     <p>Track your HR support requests and their status</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => navigate('/helpdesk/create')}>
-                    <HiOutlinePlus /> Raise New Ticket
-                </button>
+                {!isExEmployee && (
+                    <button className="btn btn-primary" onClick={() => navigate('/helpdesk/create')}>
+                        <HiOutlinePlus /> Raise New Ticket
+                    </button>
+                )}
             </div>
 
             {/* Summary Cards */}
@@ -152,10 +156,12 @@ export default function MyHelpdesk() {
                     <div className="empty-state">
                         <div className="empty-icon">🎫</div>
                         <h3>No tickets found</h3>
-                        <p>Raise a new ticket to get help from HR team</p>
-                        <button className="btn btn-primary" onClick={() => navigate('/helpdesk/create')} style={{ marginTop: 16 }}>
-                            <HiOutlinePlus /> Raise New Ticket
-                        </button>
+                        <p>{isExEmployee ? 'No tickets recorded.' : 'Raise a new ticket to get help from HR team'}</p>
+                        {!isExEmployee && (
+                            <button className="btn btn-primary" onClick={() => navigate('/helpdesk/create')} style={{ marginTop: 16 }}>
+                                <HiOutlinePlus /> Raise New Ticket
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div style={{ overflowX: 'auto' }}>

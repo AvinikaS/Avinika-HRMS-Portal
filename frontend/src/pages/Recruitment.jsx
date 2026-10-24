@@ -770,7 +770,22 @@ export default function Recruitment() {
                                 </div>
                                 <div className="form-row">
                                     <div className="form-group"><label className="form-label">Aadhaar No.</label><input className="form-control" value={candidateForm.aadhaar} onChange={e => setCandidateForm({ ...candidateForm, aadhaar: e.target.value })} placeholder="For duplicate detection" /></div>
-                                    <div className="form-group"><label className="form-label">Experience (years)</label><input type="number" className="form-control" value={candidateForm.experience} onChange={e => setCandidateForm({ ...candidateForm, experience: +e.target.value })} /></div>
+                                    <div className="form-group">
+                                        <label className="form-label">Experience (years)</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            className="form-control"
+                                            value={candidateForm.experience}
+                                            onKeyDown={e => { if (e.key === '-' || e.key === 'Minus') e.preventDefault(); }}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === '') setCandidateForm({ ...candidateForm, experience: '' });
+                                                else if (Number(val) >= 0) setCandidateForm({ ...candidateForm, experience: val });
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="form-row">
                                     <div className="form-group"><label className="form-label">Source</label>
@@ -786,8 +801,32 @@ export default function Recruitment() {
                                     </div>
                                 </div>
                                 <div className="form-row">
-                                    <div className="form-group"><label className="form-label">Expected Salary (₹)</label><input type="number" className="form-control" value={candidateForm.expectedSalary} onChange={e => setCandidateForm({ ...candidateForm, expectedSalary: e.target.value })} /></div>
-                                    <div className="form-group"><label className="form-label">Notice Period</label><input className="form-control" value={candidateForm.noticePeriod} onChange={e => setCandidateForm({ ...candidateForm, noticePeriod: e.target.value })} placeholder="e.g. 30 days" /></div>
+                                    <div className="form-group">
+                                        <label className="form-label">Expected Salary (₹)</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            className="form-control"
+                                            value={candidateForm.expectedSalary}
+                                            onKeyDown={e => { if (e.key === '-' || e.key === 'Minus') e.preventDefault(); }}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === '') setCandidateForm({ ...candidateForm, expectedSalary: '' });
+                                                else if (Number(val) >= 0) setCandidateForm({ ...candidateForm, expectedSalary: val });
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Notice Period</label>
+                                        <input
+                                            className="form-control"
+                                            value={candidateForm.noticePeriod}
+                                            onKeyDown={e => { if (e.key === '-' || e.key === 'Minus') e.preventDefault(); }}
+                                            onChange={e => setCandidateForm({ ...candidateForm, noticePeriod: e.target.value.replace(/-/g, '') })}
+                                            placeholder="e.g. 30 days"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="form-group"><label className="form-label">Skills (comma-separated)</label><input className="form-control" value={candidateForm.skills} onChange={e => setCandidateForm({ ...candidateForm, skills: e.target.value })} /></div>
                             </div>

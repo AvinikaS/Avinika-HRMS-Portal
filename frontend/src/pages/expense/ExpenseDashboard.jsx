@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import {
     HiOutlineCurrencyRupee, HiOutlineClipboardList, HiOutlineCheckCircle,
     HiOutlineXCircle, HiOutlineClock, HiOutlinePlus, HiOutlineRefresh,
@@ -30,6 +31,7 @@ const formatDate = (date) => {
 };
 
 export default function ExpenseDashboard() {
+    const { isExEmployee } = useAuth();
     const navigate = useNavigate();
     const [summary, setSummary] = useState({
         total: 0, draft: 0, submitted: 0, hrApproved: 0, superAdminApproved: 0,
@@ -84,9 +86,11 @@ export default function ExpenseDashboard() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-secondary btn-sm" onClick={fetchData}><HiOutlineRefresh /></button>
-                    <button className="btn btn-primary" onClick={() => navigate('/expenses/create')} disabled={noProfile} style={noProfile ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
-                        <HiOutlinePlus /> New Expense Claim
-                    </button>
+                    {!isExEmployee && (
+                        <button className="btn btn-primary" onClick={() => navigate('/expenses/create')} disabled={noProfile} style={noProfile ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
+                            <HiOutlinePlus /> New Expense Claim
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -137,10 +141,12 @@ export default function ExpenseDashboard() {
                     <div className="empty-state" style={{ padding: 48 }}>
                         <div className="empty-icon">💸</div>
                         <h3>No expense claims yet</h3>
-                        <p>You haven't submitted any expense claims yet.</p>
-                        <button className="btn btn-primary" onClick={() => navigate('/expenses/create')} style={{ marginTop: 16 }}>
-                            <HiOutlinePlus /> Raise New Expense Claim
-                        </button>
+                        <p>{isExEmployee ? 'No expense claims recorded.' : "You haven't submitted any expense claims yet."}</p>
+                        {!isExEmployee && (
+                            <button className="btn btn-primary" onClick={() => navigate('/expenses/create')} style={{ marginTop: 16 }}>
+                                <HiOutlinePlus /> Raise New Expense Claim
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div style={{ overflowX: 'auto' }}>

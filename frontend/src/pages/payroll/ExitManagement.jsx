@@ -593,6 +593,27 @@ export default function ExitManagement() {
         });
     };
 
+    const handleDownloadDoc = async (ex, type, docTitle) => {
+        try {
+            const id = ex.exitRequestDetails?._id || ex._id;
+            toast.info(`Generating ${docTitle}...`);
+            const res = await api.get(`/exit/documents/${id}?type=${type}`, { responseType: 'blob' });
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const fileUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = fileUrl;
+            const empCode = ex.employee?.employeeCode || 'EMP';
+            link.download = `${type}_${empCode}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => window.URL.revokeObjectURL(fileUrl), 10000);
+            toast.success(`${docTitle} downloaded successfully!`);
+        } catch (err) {
+            console.error('Download error:', err);
+            toast.error(err.response?.data?.message || `Failed to download ${docTitle}`);
+        }
+    };
 
     return (
         <div className="animate-fadeIn" style={{ paddingBottom: 50 }}>
@@ -953,9 +974,28 @@ export default function ExitManagement() {
                                                                     >
                                                                         📋 History
                                                                     </button>
-                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=ff_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="F&F Letter"><HiOutlineDocumentDownload /> F&F</a>
-                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=experience_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Experience Letter">Exp</a>
-                                                                    <a href={`/api/exit/documents/${ex.exitRequestDetails?._id || ex._id}?type=relieving_letter&token=${sessionStorage.getItem('hrms_token')}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" title="Relieving Letter">Rel</a>
+                                                                    <button
+                                                                        onClick={() => handleDownloadDoc(ex, 'ff_letter', 'F&F Settlement Letter')}
+                                                                        className="btn btn-sm btn-secondary"
+                                                                        title="F&F Letter"
+                                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                                                    >
+                                                                        <HiOutlineDocumentDownload /> F&F
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDownloadDoc(ex, 'experience_letter', 'Experience Certificate')}
+                                                                        className="btn btn-sm btn-secondary"
+                                                                        title="Experience Letter"
+                                                                    >
+                                                                        Exp
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDownloadDoc(ex, 'relieving_letter', 'Relieving Letter')}
+                                                                        className="btn btn-sm btn-secondary"
+                                                                        title="Relieving Letter"
+                                                                    >
+                                                                        Rel
+                                                                    </button>
                                                                 </div>
                                                             )
                                                         )}

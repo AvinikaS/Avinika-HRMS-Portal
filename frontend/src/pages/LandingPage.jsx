@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import PublicNavbar from '../components/Layout/PublicNavbar';
 import PublicFooter from '../components/Layout/PublicFooter';
+import FaqSection from '../components/FaqSection';
 import './LandingPage.css';
 
 const FEATURES = [
@@ -220,6 +221,9 @@ export default function LandingPage() {
             </section>
 
 
+
+            {/* ============ FAQS (INDIA HRMS) ============ */}
+            <FaqSection />
 
             {/* ============ CONTACT ============ */}
             {/* ============ CTA / CONTACT HINT ============ */}

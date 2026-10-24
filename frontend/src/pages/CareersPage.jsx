@@ -217,6 +217,14 @@ function JobDetail({ slug }) {
 
     const handleApply = async (e) => {
         e.preventDefault();
+        if (form.experience && Number(form.experience) < 0) {
+            setError('Experience cannot be negative');
+            return;
+        }
+        if (form.expectedSalary && Number(form.expectedSalary) < 0) {
+            setError('Expected Salary cannot be negative');
+            return;
+        }
         setSubmitting(true);
         setError('');
         try {
@@ -392,13 +400,39 @@ function JobDetail({ slug }) {
                                     <div className="cp-form-row">
                                         <div className="cp-form-group">
                                             <label>Experience (years)</label>
-                                            <input type="number" value={form.experience} placeholder="e.g. 3"
-                                                onChange={e => setForm({ ...form, experience: e.target.value })} />
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={form.experience}
+                                                placeholder="e.g. 3"
+                                                onKeyDown={e => {
+                                                    if (e.key === '-' || e.key === 'Minus') e.preventDefault();
+                                                }}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    if (val === '') setForm({ ...form, experience: '' });
+                                                    else if (Number(val) >= 0) setForm({ ...form, experience: val });
+                                                }}
+                                            />
                                         </div>
                                         <div className="cp-form-group">
                                             <label>Expected Salary (₹/year)</label>
-                                            <input type="number" value={form.expectedSalary} placeholder="e.g. 800000"
-                                                onChange={e => setForm({ ...form, expectedSalary: e.target.value })} />
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={form.expectedSalary}
+                                                placeholder="e.g. 800000"
+                                                onKeyDown={e => {
+                                                    if (e.key === '-' || e.key === 'Minus') e.preventDefault();
+                                                }}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    if (val === '') setForm({ ...form, expectedSalary: '' });
+                                                    else if (Number(val) >= 0) setForm({ ...form, expectedSalary: val });
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                     <div className="cp-form-row">
@@ -409,8 +443,14 @@ function JobDetail({ slug }) {
                                         </div>
                                         <div className="cp-form-group">
                                             <label>Notice Period</label>
-                                            <input value={form.noticePeriod} placeholder="e.g. 30 days"
-                                                onChange={e => setForm({ ...form, noticePeriod: e.target.value })} />
+                                            <input
+                                                value={form.noticePeriod}
+                                                placeholder="e.g. 30 days"
+                                                onKeyDown={e => {
+                                                    if (e.key === '-' || e.key === 'Minus') e.preventDefault();
+                                                }}
+                                                onChange={e => setForm({ ...form, noticePeriod: e.target.value.replace(/-/g, '') })}
+                                            />
                                         </div>
                                     </div>
                                     <div className="cp-form-group">

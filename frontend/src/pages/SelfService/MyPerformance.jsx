@@ -1,6 +1,7 @@
 import { toast } from 'react-toastify';
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { HiOutlineX, HiOutlineCheck } from 'react-icons/hi';
 
 const STATUSES = ['Draft', 'Self Review', 'Manager Review', 'Completed'];
@@ -18,6 +19,7 @@ const StarRating = ({ value, onChange, readonly, size = 22 }) => (
 );
 
 export default function MyPerformance() {
+    const { isExEmployee } = useAuth();
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
@@ -90,7 +92,7 @@ export default function MyPerformance() {
                                     <span className="badge" style={{ background: STATUS_COLORS[r.status] + '20', color: STATUS_COLORS[r.status], fontWeight: 600, fontSize: 12 }}>{r.status}</span>
                                 </div>
                             </div>
-                            {r.status === 'Self Review' && (
+                            {r.status === 'Self Review' && !isExEmployee && (
                                 <div style={{ marginTop: 10, padding: '8px 12px', background: '#6366f110', borderRadius: 8, fontSize: 12, color: '#6366f1', fontWeight: 600 }}>
                                     📝 Action Required: Complete your self-assessment
                                 </div>
@@ -107,7 +109,7 @@ export default function MyPerformance() {
                         <div className="modal-header">
                             <h2>{selected.reviewPeriod} {selected.year} Review</h2>
                             <div style={{ display: 'flex', gap: 8 }}>
-                                {selected.status === 'Self Review' && !editing && (
+                                {selected.status === 'Self Review' && !editing && !isExEmployee && (
                                     <button className="btn btn-sm btn-primary" onClick={() => setEditing(true)}>📝 Self Assess</button>
                                 )}
                                 <button className="btn btn-icon btn-secondary" onClick={() => { setSelected(null); setEditing(false); }}><HiOutlineX /></button>

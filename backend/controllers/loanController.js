@@ -66,6 +66,13 @@ exports.applyLoan = async (req, res) => {
         }
 
         const isEmployee = req.user.role === 'Employee';
+        if (isEmployee) {
+            const EmployeeModel = require('../models/Employee');
+            const emp = await EmployeeModel.findById(req.user.employeeId);
+            if (emp?.status === 'Terminated / Ex-Employee') {
+                return res.status(403).json({ success: false, message: 'Ex-employees / terminated employees cannot apply for loans.' });
+            }
+        }
         const initialStatus = isEmployee ? 'Pending' : 'Offered';
         const activeDisbursalMode = disbursalMode || preferredPaymentMethod || 'Payroll System';
 

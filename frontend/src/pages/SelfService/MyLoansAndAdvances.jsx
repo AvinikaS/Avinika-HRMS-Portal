@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import { HiOutlineCash, HiOutlinePlus, HiOutlineX, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 
 export default function MyLoansAndAdvances() {
+    const { isExEmployee } = useAuth();
     const [loans, setLoans] = useState([]);
     const [advances, setAdvances] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -257,10 +259,12 @@ export default function MyLoansAndAdvances() {
                     <h1>Loans & Advances</h1>
                     <p>Track your active loans and advance salary requests</p>
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                    <button className="btn btn-secondary" onClick={() => openAdvanceModal()}><HiOutlinePlus /> Request Advance</button>
-                    <button className="btn btn-primary" onClick={() => openLoanModal()}><HiOutlinePlus /> Request Loan</button>
-                </div>
+                {!isExEmployee && (
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <button className="btn btn-secondary" onClick={() => openAdvanceModal()}><HiOutlinePlus /> Request Advance</button>
+                        <button className="btn btn-primary" onClick={() => openLoanModal()}><HiOutlinePlus /> Request Loan</button>
+                    </div>
+                )}
             </div>
 
             <div className="tabs" style={{ marginBottom: 20 }}>
@@ -383,7 +387,9 @@ export default function MyLoansAndAdvances() {
                                                 })()}
                                             </td>
                                             <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                                {l.status === 'Pending' ? (
+                                                {isExEmployee ? (
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => handleViewLoanHistory(l)} style={{ color: '#6366f1', padding: '4px 12px', fontSize: '12px' }}>📜 View History</button>
+                                                ) : l.status === 'Pending' ? (
                                                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                                         <button className="btn btn-icon btn-secondary btn-sm" style={{ color: '#3b82f6' }} onClick={() => openLoanModal(l)} title="Edit"><HiOutlinePencil /></button>
                                                         <button className="btn btn-icon btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => deleteLoan(l._id)} title="Delete"><HiOutlineTrash /></button>
@@ -474,7 +480,7 @@ export default function MyLoansAndAdvances() {
                                                 })()}
                                             </td>
                                             <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                                {a.status === 'Pending' ? (
+                                                {a.status === 'Pending' && !isExEmployee ? (
                                                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                                         <button className="btn btn-icon btn-secondary btn-sm" style={{ color: '#3b82f6' }} onClick={() => openAdvanceModal(a)} title="Edit"><HiOutlinePencil /></button>
                                                         <button className="btn btn-icon btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => deleteAdvance(a._id)} title="Delete"><HiOutlineTrash /></button>

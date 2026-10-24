@@ -198,7 +198,7 @@ exports.addCandidate = async (req, res) => {
         }
 
         // Rehire detection
-        const prevEmployee = await Employee.findOne({ $or: orConditions, status: { $in: ['Inactive', 'Resigned', 'Terminated'] } });
+        const prevEmployee = await Employee.findOne({ $or: orConditions, status: { $in: ['Terminated / Ex-Employee'] } });
         let isPreviousEmployee = false;
         let previousEmploymentHistory = [];
         if (prevEmployee) {

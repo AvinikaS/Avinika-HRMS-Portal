@@ -115,16 +115,16 @@ exports.updateEmployee = async (req, res) => {
     }
 };
 
-// DELETE /api/employees/:id  (soft delete - set status to Inactive)
+// DELETE /api/employees/:id  (soft delete - set status to Terminated / Ex-Employee)
 exports.deleteEmployee = async (req, res) => {
     try {
         const employee = await Employee.findByIdAndUpdate(req.params.id, {
-            status: 'Inactive',
+            status: 'Terminated / Ex-Employee',
             dateOfLeaving: new Date()
         }, { new: true });
         if (!employee) return res.status(404).json({ success: false, message: 'Employee not found' });
-        await User.findOneAndUpdate({ employeeId: employee._id }, { isActive: false });
-        res.json({ success: true, message: 'Employee deactivated', data: employee });
+        // NOTE: We keep user account active so ex-employees can log in to view payslips, relieving letter, etc.
+        res.json({ success: true, message: 'Employee marked as Terminated / Ex-Employee', data: employee });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

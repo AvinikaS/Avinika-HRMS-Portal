@@ -41,9 +41,14 @@ exports.checkIn = async (req, res) => {
         let att = await Attendance.findOne({ employee: req.user.employeeId, date: { $gte: today, $lt: tomorrow } });
         if (att && att.checkIn) return res.status(400).json({ success: false, message: 'Already checked in today' });
 
-        // 4. Face Match & Liveness
         const employee = await Employee.findById(req.user.employeeId);
-        if (!employee || !employee.profileImage) {
+        if (!employee) {
+            return res.status(404).json({ success: false, message: 'Employee record not found.' });
+        }
+        if (employee.status === 'Terminated / Ex-Employee') {
+            return res.status(403).json({ success: false, message: 'Ex-employees are not permitted to mark attendance.' });
+        }
+        if (!employee.profileImage) {
             return res.status(400).json({ success: false, message: 'Profile image not found. Please update your profile first.' });
         }
 

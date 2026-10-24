@@ -118,8 +118,8 @@ exports.processMonthlyPayroll = async (month, year, employeeId = null) => {
             continue;
         }
 
-        // 3. Status checks: if marked Inactive / Resigned / Terminated and no valid work in this month, skip
-        if (['Inactive', 'Resigned', 'Terminated'].includes(emp.status)) {
+        // 3. Status checks: if marked Terminated / Ex-Employee and no valid work in this month, skip
+        if (['Terminated / Ex-Employee'].includes(emp.status)) {
             if (!lwd || lwd < payrollStart) {
                 continue;
             }

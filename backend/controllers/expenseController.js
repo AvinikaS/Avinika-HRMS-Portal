@@ -48,6 +48,9 @@ exports.createExpense = async (req, res) => {
     try {
         const employee = await Employee.findOne({ userId: req.user._id });
         if (!employee) return res.status(400).json({ success: false, message: 'Employee profile not found.' });
+        if (employee.status === 'Terminated / Ex-Employee') {
+            return res.status(403).json({ success: false, message: 'Ex-employees / terminated employees cannot submit expense claims.' });
+        }
 
         const { categoryId, customCategoryName, expenseDate, expenseEndDate, amountClaimed, description, vendor, location, businessPurpose, notes, receipts } = req.body;
 

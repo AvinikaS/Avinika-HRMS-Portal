@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import {
     HiOutlineArrowLeft, HiOutlineDocumentText, HiOutlineCheckCircle,
     HiOutlineXCircle, HiOutlineClock, HiOutlineRefresh, HiOutlineUpload, HiOutlineX, HiOutlinePaperClip, HiOutlineExclamationCircle
@@ -35,6 +36,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
 export default function ExpenseDetail() {
+    const { isExEmployee } = useAuth();
     const { id } = useParams();
     const navigate = useNavigate();
     const fileInputRef = useRef();
@@ -206,10 +208,10 @@ export default function ExpenseDetail() {
     if (loading) return <div style={{ padding: 48, textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
     if (!claim) return <div className="empty-state"><h3>Claim not found</h3></div>;
 
-    const canEdit = ['DRAFT', 'SUBMITTED', 'CORRECTION_REQUIRED'].includes(claim.status);
-    const canSubmitDraft = claim.status === 'DRAFT';
-    const canCancel = ['DRAFT', 'SUBMITTED'].includes(claim.status);
-    const isCorrectionRequired = claim.status === 'CORRECTION_REQUIRED';
+    const canEdit = ['DRAFT', 'SUBMITTED', 'CORRECTION_REQUIRED'].includes(claim.status) && !isExEmployee;
+    const canSubmitDraft = claim.status === 'DRAFT' && !isExEmployee;
+    const canCancel = ['DRAFT', 'SUBMITTED'].includes(claim.status) && !isExEmployee;
+    const isCorrectionRequired = claim.status === 'CORRECTION_REQUIRED' && !isExEmployee;
 
     return (
         <div className="animate-fadeIn">

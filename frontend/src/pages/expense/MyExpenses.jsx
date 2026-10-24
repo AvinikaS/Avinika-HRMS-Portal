@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { HiOutlinePlus, HiOutlineRefresh, HiOutlineSearch } from 'react-icons/hi';
 
 const STATUS_LABELS = {
@@ -26,6 +27,7 @@ const formatDate = (date) => {
 };
 
 export default function MyExpenses() {
+    const { isExEmployee } = useAuth();
     const navigate = useNavigate();
     const [claims, setClaims] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -81,9 +83,11 @@ export default function MyExpenses() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-secondary btn-sm" onClick={fetchClaims}><HiOutlineRefresh /></button>
-                    <button className="btn btn-primary" onClick={() => navigate('/expenses/create')} disabled={noProfile} style={noProfile ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
-                        <HiOutlinePlus /> New Claim
-                    </button>
+                    {!isExEmployee && (
+                        <button className="btn btn-primary" onClick={() => navigate('/expenses/create')} disabled={noProfile} style={noProfile ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
+                            <HiOutlinePlus /> New Claim
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -151,7 +155,7 @@ export default function MyExpenses() {
                     <div className="empty-state" style={{ padding: 48 }}>
                         <div className="empty-icon">💸</div>
                         <h3>No claims found</h3>
-                        <p>Try adjusting your filters or raise a new claim.</p>
+                        <p>{isExEmployee ? 'No claims found.' : 'Try adjusting your filters or raise a new claim.'}</p>
                     </div>
                 ) : (
                     <div style={{ overflowX: 'auto' }}>

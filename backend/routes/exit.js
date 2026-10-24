@@ -29,6 +29,7 @@ router.get('/documents/:typeOrId', (req, res, next) => {
     if (knownTypes.includes(req.params.typeOrId)) {
         return exitController.downloadSelfDocument(req, res, next);
     } else {
+        req.params.exitRequestId = req.params.typeOrId;
         return authorize('SuperAdmin', 'HRAdmin')(req, res, () => {
             exitController.generateDocument(req, res, next);
         });

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import {
     HiOutlineClock, HiOutlineCheckCircle, HiOutlineXCircle,
@@ -11,6 +12,7 @@ import {
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function MyAttendanceRegularization() {
+    const { isExEmployee } = useAuth();
     const tabsBarRef = useRef(null);
     const [searchParams, setSearchParams] = useSearchParams();
     const tabFromUrl = searchParams.get('tab') === 'history' ? 'history' : 'pending';
@@ -372,12 +374,14 @@ export default function MyAttendanceRegularization() {
                         Submit requests to correct missed check-ins, check-outs, or attendance errors
                     </p>
                 </div>
-                <Link
-                    to="/my-regularizations/create"
-                    className="my-reg-new-btn"
-                >
-                    <HiOutlinePlus size={18} /> New Regularization Request
-                </Link>
+                {!isExEmployee && (
+                    <Link
+                        to="/my-regularizations/create"
+                        className="my-reg-new-btn"
+                    >
+                        <HiOutlinePlus size={18} /> New Regularization Request
+                    </Link>
+                )}
             </div>
 
             {/* Tabs */}
@@ -481,10 +485,14 @@ export default function MyAttendanceRegularization() {
                     <div style={{ padding: '60px 20px', textAlign: 'center' }}>
                         <HiOutlineCalendar size={48} color="#cbd5e1" style={{ marginBottom: '12px' }} />
                         <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#334155' }}>No attendance regularization requests match the selected filters.</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '14px', margin: '4px 0 16px 0' }}>If you forgot to check in or out, click below to raise a correction request.</p>
-                        <Link to="/my-regularizations/create" className="btn btn-primary" style={{ padding: '8px 16px', textDecoration: 'none', background: '#3b82f6', color: '#fff', borderRadius: '6px' }}>
-                            New Request
-                        </Link>
+                        <p style={{ color: '#94a3b8', fontSize: '14px', margin: '4px 0 16px 0' }}>
+                            {isExEmployee ? 'No attendance regularization requests found.' : 'If you forgot to check in or out, click below to raise a correction request.'}
+                        </p>
+                        {!isExEmployee && (
+                            <Link to="/my-regularizations/create" className="btn btn-primary" style={{ padding: '8px 16px', textDecoration: 'none', background: '#3b82f6', color: '#fff', borderRadius: '6px' }}>
+                                New Request
+                            </Link>
+                        )}
                     </div>
                 ) : (
                     <>
